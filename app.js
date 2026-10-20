@@ -40,7 +40,9 @@ function blankData() {
     storeFor: {},     // { "protein powder": "Woolworths" }  (remembered store for each item)
     staples: STAPLES.slice(),
     chores: CLEANING_TASKS.map((c) => ({ ...c, lastDone: null })),  // cleaning tasks + when last done
-    seenStarters: STARTER_RECIPES.map((r) => r.id)   // starter recipes already offered (so deleted ones stay deleted)
+    seenStarters: STARTER_RECIPES.map((r) => r.id),  // starter recipes already offered (so deleted ones stay deleted)
+    inbox: [],        // brain dump: [ { id, text, list: "inbox" | "today" | "week" | "later", done } ]
+    focus: { sessions: [], running: null }  // finished sprints [ { date, mins } ] + the sprint in progress
   };
 }
 
@@ -354,6 +356,8 @@ function homeScreen() {
     ${routinesSummaryHTML()}
 
     ${todaysMealsHTML()}
+
+    ${focusHomeHTML()}
 
     <div class="card soft">
       <div class="row between">
@@ -730,7 +734,7 @@ function settingsScreen() {
 
     <div class="card soft">
       <h3>Coming soon</h3>
-      <p class="small">Saves and Focus tabs arrive in later stages.</p>
+      <p class="small">The Saves tab arrives in Stage 5.</p>
     </div>
   `;
 }

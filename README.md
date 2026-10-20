@@ -12,6 +12,7 @@ no login, no paid services.
 | `data.js` | **My plan content.** Workouts, weekly plan, phases, habits, goals, routines, Tiimo times, starter recipes, staples and food preferences. Edit words here to change the plan. |
 | `app.js` | The logic: Home, Fitness, Routines and Settings screens, ticks, streaks, strength log, backup. |
 | `house.js` | Everything for the House tab: cleaning tasks, Thursday clean, 15-minute blitz. |
+| `focus.js` | Everything for the Focus tab: brain dump inbox, focus timer, focus streak. |
 | `meals.js` | Everything for the Meals tab: recipes, planner, Surprise me, shopping list. |
 | `manifest.json` | Tells the iPhone this is an app (name, icon, colours). |
 | `sw.js` | The offline helper. Keeps a copy of the app on the phone. |
