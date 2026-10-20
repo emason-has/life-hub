@@ -120,7 +120,7 @@ const PHASES = [
       { id: "sun-prep", label: "Sunday meal prep", days: ["Sun"] },
       { id: "morning-routine", label: "Morning routine" }
     ]},
-  { num: 3, weeks: "Weeks 5-6", name: "Add Thursday clean + Home tab",
+  { num: 3, weeks: "Weeks 5-6", name: "Add Thursday clean + House tab",
     habits: [
       { id: "thu-tidy", label: "Thursday clean", days: ["Thu"] }
     ]},
@@ -325,4 +325,51 @@ const STARTER_RECIPES = [
     tags: ["High protein", "Meal prep friendly", "Freezer friendly"],
     ingredients: ["500g Lean beef mince", "400g Kidney beans", "800g Diced tomatoes", "1 Brown onion", "1 Capsicum", "2 Garlic cloves", "2 tbsp Chilli seasoning", "300g Rice"],
     method: "Brown mince with onion, garlic and capsicum. Add seasoning, tomatoes and drained beans, simmer 25 min. Freeze in portions. On a rough Monday: microwave and serve with microwave rice." }
+];
+
+
+// =====================================================================
+// BALI TRIP
+// Shown under the countdown on Home. The countdown date itself is in Settings.
+// =====================================================================
+const BALI_TRIP = [
+  { place: "Uluwatu", from: "2027-02-15", to: "2027-02-18" },
+  { place: "Canggu", from: "2027-02-18", to: "2027-02-28" }
+];
+
+
+// =====================================================================
+// STAGE 4: HOUSE (cleaning)
+// "every" is how many days between cleans. "mins" is a rough time, used by
+// the 15-minute blitz. You can edit, add and delete tasks in the app too.
+// =====================================================================
+const CLEANING_TASKS = [
+  // Weekly
+  { id: "c-sheets", name: "Change sheets", room: "Bedroom", every: 7, mins: 15 },
+  { id: "c-bathroom", name: "Clean bathroom", room: "Bathroom", every: 7, mins: 20 },
+  { id: "c-vacuum", name: "Vacuum", room: "Whole house", every: 7, mins: 20 },
+  { id: "c-mop", name: "Mop floors", room: "Whole house", every: 7, mins: 15 },
+  { id: "c-bins", name: "Bins out", room: "Outside", every: 7, mins: 3 },
+  // Fortnightly
+  { id: "c-fridge", name: "Fridge clean-out", room: "Kitchen", every: 14, mins: 10 },
+  { id: "c-dust", name: "Dust surfaces", room: "Whole house", every: 14, mins: 10 },
+  // Monthly
+  { id: "c-oven", name: "Clean oven", room: "Kitchen", every: 30, mins: 40 },
+  { id: "c-microwave", name: "Clean microwave", room: "Kitchen", every: 30, mins: 5 },
+  { id: "c-skirting", name: "Wipe skirting boards", room: "Whole house", every: 30, mins: 15 },
+  { id: "c-washer", name: "Washing machine clean cycle", room: "Laundry", every: 30, mins: 5 },
+  // Every 3-6 months
+  { id: "c-windows", name: "Clean windows", room: "Whole house", every: 90, mins: 45 },
+  { id: "c-curtains", name: "Wash curtains", room: "Living room", every: 180, mins: 15 },
+  { id: "c-mattress", name: "Flip mattress", room: "Bedroom", every: 90, mins: 5 },
+  { id: "c-deepfridge", name: "Deep clean fridge", room: "Kitchen", every: 90, mins: 40 }
+];
+
+// How the "every" days are labelled in the app.
+const FREQUENCIES = [
+  { days: 7, label: "Weekly" },
+  { days: 14, label: "Fortnightly" },
+  { days: 30, label: "Monthly" },
+  { days: 90, label: "Every 3 months" },
+  { days: 180, label: "Every 6 months" }
 ];

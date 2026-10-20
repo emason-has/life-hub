@@ -23,7 +23,7 @@ function blankData() {
     version: 1,
     settings: {
       startDate: todayKey(),     // the day your programme started (week 1)
-      baliDate: "2027-02-25",
+      baliDate: "2027-02-15",
       createdOn: todayKey(),
       lastBackup: null
     },
@@ -38,7 +38,8 @@ function blankData() {
     mealPlans: {},    // { "2026-10-26": { "Mon-dinner": "r-pasta", ... } }  (keyed by the Monday)
     shopping: {},     // { "2026-10-26": { checked: { "oat": true }, extras: ["Coffee pods"] } }
     storeFor: {},     // { "protein powder": "Woolworths" }  (remembered store for each item)
-    staples: STAPLES.slice()
+    staples: STAPLES.slice(),
+    chores: CLEANING_TASKS.map((c) => ({ ...c, lastDone: null }))  // cleaning tasks + when last done
   };
 }
 
@@ -47,7 +48,10 @@ function loadData() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORE_KEY));
     if (saved && typeof saved === "object") {
-      return { ...fresh, ...saved, settings: { ...fresh.settings, ...saved.settings } };
+      const merged = { ...fresh, ...saved, settings: { ...fresh.settings, ...saved.settings } };
+      // The trip moved from "around 25 Feb" to arriving 15 Feb.
+      if (merged.settings.baliDate === "2027-02-25") merged.settings.baliDate = "2027-02-15";
+      return merged;
     }
   } catch (e) { /* nothing saved yet, or unreadable: start fresh */ }
   return fresh;
@@ -302,7 +306,7 @@ function render() {
   const draw = SCREENS[screen] || homeScreen;
   document.getElementById("app").innerHTML = draw(...rest);
   // Screens that live under another tab (a workout is part of Fitness, etc.)
-  const parentTab = { workout: "fitness", recipe: "meals", pick: "meals" };
+  const parentTab = { workout: "fitness", recipe: "meals", pick: "meals", settings: "home" };
   const tab = parentTab[screen] || (SCREENS[screen] ? screen : "home");
   document.querySelectorAll(".tabbar a").forEach((a) => a.classList.toggle("on", a.dataset.tab === tab));
 }
@@ -317,24 +321,17 @@ function homeScreen() {
   const stats = weekStats(mondayOf(today));
   const streak = dayStreak();
   const weekWins = weekWinStreak();
-  const baliDays = daysBetween(today, data.settings.baliDate);
 
   return `
-    <h1>${hello} 🌊</h1>
+    <div class="row between">
+      <h1>${hello} 🌊</h1>
+      <a class="btn secondary" href="#settings" aria-label="Settings">⚙️</a>
+    </div>
     <p class="sub">${niceDate(today)} · Week ${weekNumber()} of your plan</p>
 
     ${backupReminderHTML()}
 
-    <div class="card ocean">
-      <div class="row between">
-        <div>
-          <div class="muted">Bali countdown</div>
-          <div class="big-number">${baliDays > 0 ? baliDays : "🌴"}</div>
-          <div>${baliDays > 0 ? `days to go (${Math.ceil(baliDays / 7)} weeks)` : baliDays === 0 ? "It's Bali day!" : "Hope Bali was amazing!"}</div>
-        </div>
-        <div style="font-size:54px">🏝️</div>
-      </div>
-    </div>
+    ${baliHTML()}
 
     <div class="card">
       <div class="row between"><h2>Today's workout</h2><span class="pill">${plan.day}</span></div>
@@ -370,10 +367,7 @@ function homeScreen() {
 
     ${progressRemindersHTML()}
 
-    <div class="card">
-      <h2>Cleaning</h2>
-      <p class="muted">Your cleaning tracker arrives in Stage 4. Overdue tasks will show up here. 🧽</p>
-    </div>
+    ${cleaningHomeHTML()}
   `;
 }
 
@@ -387,6 +381,31 @@ function routinesSummaryHTML() {
       <div class="row between"><h2>Routines 🌅</h2><span class="muted small">Open ›</span></div>
       <div class="row wrap" style="gap:8px">${part("Morning", MORNING)} ${part("Habits", DAILY_HABITS)} ${part("Evening", EVENING)}</div>
     </a>`;
+}
+
+// The Bali countdown, with the trip plan underneath.
+function baliHTML() {
+  const today = todayKey();
+  const days = daysBetween(today, data.settings.baliDate);
+  const end = BALI_TRIP[BALI_TRIP.length - 1].to;
+  const stay = BALI_TRIP.find((s) => today >= s.from && today < s.to);
+  const plan = BALI_TRIP.map((s) => `${s.place}: ${niceDate(s.from).slice(4)} to ${niceDate(s.to).slice(4)}`).join(" · ");
+  let big = "🌴", line;
+  if (days > 0) { big = days; line = `days to go (${Math.ceil(days / 7)} weeks)`; }
+  else if (stay) line = `You're in ${stay.place}! Enjoy every second.`;
+  else if (today <= end) line = "You're in Bali! Enjoy every second.";
+  else line = "Hope Bali was amazing!";
+  return `<div class="card ocean">
+      <div class="row between">
+        <div>
+          <div class="muted">Bali countdown</div>
+          <div class="big-number">${big}</div>
+          <div>${line}</div>
+        </div>
+        <div style="font-size:54px">🏝️</div>
+      </div>
+      <p class="small" style="margin:10px 0 0;opacity:0.9">🌴 ${plan}</p>
+    </div>`;
 }
 
 function backupReminderHTML() {
@@ -572,6 +591,7 @@ function progressScreen() {
 function goalsHTML() {
   return `<div class="card">
     <h2>Goals by Bali 🏝️</h2>
+    ${daysBetween(todayKey(), data.settings.baliDate) > 0 ? `<p class="small muted">${Math.ceil(daysBetween(todayKey(), data.settings.baliDate) / 7)} weeks to go. Small steps add up.</p>` : ""}
     ${GOALS.map((g) => {
       const best = bestWeight(g.exercise);
       const pct = best ? Math.max(0, Math.min(100, ((best - g.start) / (g.target - g.start)) * 100)) : 0;
@@ -682,6 +702,7 @@ function feelingsHTML() {
 function settingsScreen() {
   const s = data.settings;
   return `
+    <a class="back" href="#home">‹ Home</a>
     <h1>Settings ⚙️</h1>
     <p class="sub">Your data lives only on this phone.</p>
 
@@ -703,7 +724,7 @@ function settingsScreen() {
 
     <div class="card soft">
       <h3>Coming soon</h3>
-      <p class="small">Home, Saves and Focus tabs arrive in later stages.</p>
+      <p class="small">Saves and Focus tabs arrive in later stages.</p>
     </div>
   `;
 }
