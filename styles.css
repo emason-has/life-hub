@@ -311,3 +311,30 @@ textarea { min-height: 80px; resize: vertical; }
 
 /* Links inside text */
 p a { color: var(--ocean); font-weight: 600; }
+
+/* ---------- Meals ---------- */
+/* One meal slot in the planner (tap to choose a recipe) */
+.slot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 10px 12px;
+  margin: 6px 0;
+  border-radius: 14px;
+  background: var(--sand);
+  color: var(--ink);
+  text-decoration: none;
+  font-weight: 500;
+}
+.slot span:last-child { text-align: right; }
+
+/* The little store button next to each shopping item */
+.store-chip { min-height: 56px; min-width: 84px; padding: 6px 8px; font-size: 13px; }
+
+/* Tag checkboxes on the recipe form */
+.tagpick { display: flex; align-items: center; gap: 10px; min-height: 44px; font-weight: 500; }
+.tagpick input { width: 24px; height: 24px; min-height: 0; margin: 0; }
+
+details.card summary { cursor: pointer; min-height: 28px; }

@@ -33,7 +33,12 @@ function blankData() {
     measurements: [], // [ { date, waist, hips, weight } ]
     photos: [],       // [ "2026-10-20" ]  (just the dates; photos stay in your Photos app)
     feelings: [],     // [ { date, energy, notes } ]
-    tiimoAdded: {}    // { "t-bed": true, "t-wake": "6:30am" }  (reminders already set up in Tiimo)
+    tiimoAdded: {},   // { "t-bed": true, "t-wake": "6:30am" }  (reminders already set up in Tiimo)
+    recipes: JSON.parse(JSON.stringify(STARTER_RECIPES)),  // your recipe library
+    mealPlans: {},    // { "2026-10-26": { "Mon-dinner": "r-pasta", ... } }  (keyed by the Monday)
+    shopping: {},     // { "2026-10-26": { checked: { "oat": true }, extras: ["Coffee pods"] } }
+    storeFor: {},     // { "protein powder": "Woolworths" }  (remembered store for each item)
+    staples: STAPLES.slice()
   };
 }
 
@@ -293,10 +298,12 @@ const SCREENS = {
 };
 
 function render() {
-  const [screen, sub] = (location.hash.slice(1) || "home").split("/");
+  const [screen, ...rest] = (location.hash.slice(1) || "home").split("/");
   const draw = SCREENS[screen] || homeScreen;
-  document.getElementById("app").innerHTML = draw(sub);
-  const tab = screen === "workout" ? "fitness" : (SCREENS[screen] ? screen : "home");
+  document.getElementById("app").innerHTML = draw(...rest);
+  // Screens that live under another tab (a workout is part of Fitness, etc.)
+  const parentTab = { workout: "fitness", recipe: "meals", pick: "meals" };
+  const tab = parentTab[screen] || (SCREENS[screen] ? screen : "home");
   document.querySelectorAll(".tabbar a").forEach((a) => a.classList.toggle("on", a.dataset.tab === tab));
 }
 
@@ -342,6 +349,8 @@ function homeScreen() {
     </div>
 
     ${routinesSummaryHTML()}
+
+    ${todaysMealsHTML()}
 
     <div class="card soft">
       <div class="row between">
@@ -694,7 +703,7 @@ function settingsScreen() {
 
     <div class="card soft">
       <h3>Coming soon</h3>
-      <p class="small">Meals, Home, Saves and Focus tabs arrive in later stages.</p>
+      <p class="small">Home, Saves and Focus tabs arrive in later stages.</p>
     </div>
   `;
 }
@@ -1045,7 +1054,8 @@ function importBackup(file) {
 
 
 // ---------- 9. Start the app ----------
-render();
+// Waits until every file (including meals.js) has loaded, then draws the screen.
+document.addEventListener("DOMContentLoaded", render);
 
 // Save the app files for offline use (only works once it's online at a real web address).
 if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {

@@ -217,3 +217,112 @@ const TIIMO = [
   { id: "t-sunday", title: "Sunday reset and meal prep", time: "4:00pm", days: "Sunday" },
   { id: "t-tidy", title: "Thursday tidy", time: "7:00pm", days: "Thursday" }
 ];
+
+
+// =====================================================================
+// STAGE 3: MEALS
+// =====================================================================
+
+const STORES = ["Aldi", "Coles", "Woolworths"];   // first one is the default
+
+const RECIPE_TAGS = ["High protein", "Quick", "Meal prep friendly", "Freezer friendly"];
+
+// What gets planned each day (weekday lunches are free at work).
+const MEAL_SLOTS = [
+  { id: "breakfast", label: "Breakfast" },
+  { id: "snack", label: "Snack" },
+  { id: "dinner", label: "Dinner" }
+];
+
+const FOOD_PREFS = [
+  "No seafood",
+  "No cheese on its own (fine on pizza and pasta)",
+  "Nothing super creamy, no plain milk (only in coffee)",
+  "Likes: protein oats, stir fry, steak with salad, pasta with lean mince, protein balls, banana bread, yoghurt, summer smoothies",
+  "Breakfast backup: Up&Go protein",
+  "Work lunch: pick the curry or protein, fill up on salad and veg"
+];
+
+// Words that trigger a gentle "heads up" on a recipe.
+const FOOD_FLAGS = [
+  { reason: "seafood", words: ["prawn", "shrimp", "salmon", "tuna", "fish", "seafood", "crab", "lobster", "squid", "calamari", "mussel", "oyster", "scallop", "anchov", "sardine", "barramundi", "cod"] },
+  { reason: "creamy", words: ["cream", "alfredo", "carbonara", "milk"] },
+  { reason: "cheese (fine on pizza or pasta)", words: ["cheese", "feta", "haloumi", "halloumi", "brie", "parmesan", "mozzarella", "cheddar", "ricotta"] }
+];
+
+// Rough protein numbers for the "Estimate" button.
+// per100 = grams of protein per 100g. each = per item (egg, scoop, tin).
+const PROTEIN_GUIDE = [
+  { words: ["protein powder"], each: 25 },
+  { words: ["protein pasta"], per100: 25 },
+  { words: ["chicken thigh"], per100: 25 },
+  { words: ["chicken"], per100: 31 },
+  { words: ["turkey"], per100: 27 },
+  { words: ["mince", "beef", "steak"], per100: 26 },
+  { words: ["pork"], per100: 26 },
+  { words: ["egg"], each: 6 },
+  { words: ["greek yoghurt", "greek yogurt"], per100: 10 },
+  { words: ["yoghurt", "yogurt"], per100: 5 },
+  { words: ["kidney beans", "black beans", "chickpeas", "lentils"], per100: 7 },
+  { words: ["tofu"], per100: 12 },
+  { words: ["oats"], per100: 13 },
+  { words: ["pasta"], per100: 12 },
+  { words: ["rice"], per100: 7 },
+  { words: ["peanut butter"], per100: 25 },
+  { words: ["almond meal"], per100: 21 }
+];
+
+// Things in recipes that never need to go on the shopping list.
+const NOT_SHOPPING = ["water", "ice", "salt", "pepper", "salt and pepper"];
+
+// Weekly staples always added to the shopping list (edit them in the app).
+const STAPLES = [
+  "Chicken breast", "Lean beef mince", "Eggs", "Greek yoghurt", "Oats", "Rice",
+  "Frozen veg", "Berries", "Protein powder", "Bananas"
+];
+
+// Starter recipes, loaded the first time. You can edit or delete them in the app.
+// "meal" is breakfast, snack or dinner. "serves" is how many portions one batch makes.
+// Ingredient lines start with an amount so the shopping list can add them up.
+const STARTER_RECIPES = [
+  { id: "r-oats", name: "Protein overnight oats", meal: "breakfast", serves: 1, protein: 38,
+    tags: ["High protein", "Quick", "Meal prep friendly"],
+    ingredients: ["40g Oats", "120g Greek yoghurt", "1 scoop Protein powder", "60g Berries", "80ml Water"],
+    method: "Mix oats, yoghurt, protein powder and water in a jar. Top with berries. Fridge overnight. Make 3-4 jars at once on Sunday." },
+  { id: "r-bowls", name: "Chicken, rice and roast veg bowls", meal: "dinner", serves: 4, protein: 52,
+    tags: ["High protein", "Meal prep friendly"],
+    ingredients: ["600g Chicken breast", "300g Rice", "2 Capsicum", "1 Sweet potato", "1 Zucchini", "1 Red onion", "1 tbsp Olive oil", "1 Lemon"],
+    method: "Chop veg and sweet potato, toss in oil and salt, roast at 200C for 30 min. Season chicken and bake or pan-fry. Cook rice. Split into 4 containers, squeeze of lemon." },
+  { id: "r-stirfry", name: "Turkey or beef mince stir-fry", meal: "dinner", serves: 4, protein: 35,
+    tags: ["High protein", "Quick", "Meal prep friendly"],
+    ingredients: ["500g Lean beef mince", "500g Frozen veg", "300g Rice", "3 tbsp Soy sauce", "1 tbsp Honey", "2 Garlic cloves", "1 thumb Ginger"],
+    method: "Cook rice. Brown mince in a hot pan with garlic and ginger. Add frozen stir-fry veg, soy sauce and honey, cook 5 min. Serve on rice. Swap in turkey mince any time." },
+  { id: "r-steak", name: "Steak with salad", meal: "dinner", serves: 1, protein: 45,
+    tags: ["High protein", "Quick"],
+    ingredients: ["200g Steak", "1 bag Salad leaves", "1 punnet Cherry tomatoes", "1 Cucumber", "1 Avocado"],
+    method: "Pat steak dry, salt it, cook in a very hot pan 3-4 min each side. Rest 5 min. Slice over a big salad with tomato, cucumber and avocado." },
+  { id: "r-pasta", name: "Protein pasta with lean mince", meal: "dinner", serves: 4, protein: 45,
+    tags: ["High protein", "Meal prep friendly", "Freezer friendly"],
+    ingredients: ["350g Protein pasta", "500g Lean beef mince", "700g Passata", "1 Brown onion", "2 Garlic cloves", "1 Zucchini", "1 bag Baby spinach"],
+    method: "Cook pasta. Brown mince with onion and garlic, add grated zucchini and passata, simmer 15 min. Stir through spinach and pasta. Freezes well." },
+  { id: "r-balls", name: "Protein balls", meal: "snack", serves: 6, protein: 15,
+    tags: ["High protein", "Meal prep friendly", "Freezer friendly"],
+    ingredients: ["100g Oats", "2 scoop Protein powder", "120g Peanut butter", "3 tbsp Honey", "2 tbsp Dark choc chips"],
+    method: "Mix everything (add a splash of water if dry). Roll into 12 balls. Fridge for a week or freeze. Serve = 2 balls." },
+  { id: "r-banana-bread", name: "Protein banana bread", meal: "snack", serves: 10, protein: 9,
+    tags: ["Meal prep friendly", "Freezer friendly"],
+    ingredients: ["3 Bananas", "2 Eggs", "150g Greek yoghurt", "2 scoop Protein powder", "150g Self-raising flour", "2 tbsp Honey", "1 tsp Cinnamon"],
+    method: "Mash bananas, mix in eggs, yoghurt and honey. Stir in flour, protein powder and cinnamon. Bake in a lined loaf tin at 175C for 45-50 min. Slice and freeze." },
+  { id: "r-yoghurt", name: "Greek yoghurt and berries", meal: "snack", serves: 1, protein: 17,
+    tags: ["High protein", "Quick"],
+    ingredients: ["170g Greek yoghurt", "60g Berries", "1 tsp Honey"],
+    method: "Yoghurt in a bowl, berries on top, drizzle of honey." },
+  { id: "r-smoothie", name: "Protein smoothie (summer)", meal: "snack", serves: 1, protein: 30,
+    tags: ["High protein", "Quick"],
+    ingredients: ["1 scoop Protein powder", "1 Bananas", "80g Berries", "100g Greek yoghurt", "200ml Water", "Ice"],
+    method: "Blend everything with ice until smooth." },
+  { id: "r-chilli", name: "Rough Monday beef chilli (freezer)", meal: "dinner", serves: 4, protein: 35, rough: true,
+    tags: ["High protein", "Meal prep friendly", "Freezer friendly"],
+    ingredients: ["500g Lean beef mince", "400g Kidney beans", "800g Diced tomatoes", "1 Brown onion", "1 Capsicum", "2 Garlic cloves", "2 tbsp Chilli seasoning", "300g Rice"],
+    method: "Brown mince with onion, garlic and capsicum. Add seasoning, tomatoes and drained beans, simmer 25 min. Freeze in portions. On a rough Monday: microwave and serve with microwave rice." }
+];

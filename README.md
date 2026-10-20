@@ -9,8 +9,9 @@ no login, no paid services.
 | --- | --- |
 | `index.html` | The page itself: the frame and the bottom tab bar. |
 | `styles.css` | The look: colours, sizes, rounded cards. Colours are at the top. |
-| `data.js` | **My plan content.** Workouts, weekly plan, phases, habits, goals. Edit words here to change the plan. |
-| `app.js` | The logic: screens, ticks, streaks, strength log, backup. |
+| `data.js` | **My plan content.** Workouts, weekly plan, phases, habits, goals, routines, Tiimo times, starter recipes, staples and food preferences. Edit words here to change the plan. |
+| `app.js` | The logic: Home, Fitness, Routines and Settings screens, ticks, streaks, strength log, backup. |
+| `meals.js` | Everything for the Meals tab: recipes, planner, Surprise me, shopping list. |
 | `manifest.json` | Tells the iPhone this is an app (name, icon, colours). |
 | `sw.js` | The offline helper. Keeps a copy of the app on the phone. |
 | `*.png` | App icons. |
@@ -41,7 +42,7 @@ separate from the Safari tab.
 ## Updating the app later
 
 Upload the changed files to the repo the same way (they replace the old ones).
-Also change `life-hub-v1` in `sw.js` to `life-hub-v2` (then v3 and so on) so the phone
+Also bump the version in `sw.js` (for example `life-hub-v3` to `life-hub-v4`) so the phone
 grabs the new version. Close and reopen the app once or twice to see it.
 
 ## Backups

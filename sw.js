@@ -3,7 +3,7 @@
 //
 // When you change any app file later, bump the version number below
 // (v1 -> v2) so phones know to grab the fresh copy.
-const CACHE = "life-hub-v2";
+const CACHE = "life-hub-v3";
 
 const FILES = [
   "./",
@@ -11,6 +11,7 @@ const FILES = [
   "./styles.css",
   "./data.js",
   "./app.js",
+  "./meals.js",
   "./manifest.json",
   "./icon-192.png",
   "./icon-512.png",
