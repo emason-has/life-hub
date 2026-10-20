@@ -42,7 +42,8 @@ function blankData() {
     chores: CLEANING_TASKS.map((c) => ({ ...c, lastDone: null })),  // cleaning tasks + when last done
     seenStarters: STARTER_RECIPES.map((r) => r.id),  // starter recipes already offered (so deleted ones stay deleted)
     inbox: [],        // brain dump: [ { id, text, list: "inbox" | "today" | "week" | "later", done } ]
-    focus: { sessions: [], running: null }  // finished sprints [ { date, mins } ] + the sprint in progress
+    focus: { sessions: [], running: null }, // finished sprints [ { date, mins } ] + the sprint in progress
+    health: {}        // from Apple Health: { "2026-10-20": { steps, sleep, resting, weight, workouts } }
   };
 }
 
@@ -156,7 +157,11 @@ function setTick(key, id, on) {
 // What kind of thing a tick is (gym, surf, home ...), so we can count it.
 function kindOf(id) {
   if (id === LOW_ENERGY.id) return "low";
-  if (id.startsWith("extra-")) return id === "extra-home" ? "home" : "gym";
+  // Extra sessions: "extra-surf" is a surf, "extra-gym" a gym session, and so on.
+  if (id.startsWith("extra-")) {
+    const k = id.slice(6);
+    return ["home", "surf", "run", "light"].includes(k) ? k : "gym";
+  }
   for (const p of WEEK_PLAN) {
     const item = p.items.find((i) => i.id === id);
     if (item) return item.kind;
@@ -314,7 +319,7 @@ function render() {
   const draw = SCREENS[screen] || homeScreen;
   document.getElementById("app").innerHTML = draw(...rest);
   // Screens that live under another tab (a workout is part of Fitness, etc.)
-  const parentTab = { workout: "fitness", recipe: "meals", pick: "meals", settings: "home" };
+  const parentTab = { workout: "fitness", recipe: "meals", pick: "meals", settings: "home", health: "home" };
   const tab = parentTab[screen] || (SCREENS[screen] ? screen : "home");
   document.querySelectorAll(".tabbar a").forEach((a) => a.classList.toggle("on", a.dataset.tab === tab));
 }
@@ -358,6 +363,8 @@ function homeScreen() {
     ${todaysMealsHTML()}
 
     ${focusHomeHTML()}
+
+    ${healthHomeHTML()}
 
     <div class="card soft">
       <div class="row between">
@@ -720,6 +727,7 @@ function settingsScreen() {
       <h2>Dates</h2>
       <label class="field">Bali trip date<input type="date" data-setting="baliDate" value="${s.baliDate}"></label>
       <label class="field">Programme start date (week 1)<input type="date" data-setting="startDate" value="${s.startDate}"></label>
+      <label class="field">Daily step goal<input type="number" inputmode="numeric" data-setting="stepGoal" value="${s.stepGoal || 8000}"></label>
       <p class="small muted">Your phase and wake-up target are worked out from the start date.</p>
     </div>
 
@@ -731,6 +739,8 @@ function settingsScreen() {
       <input type="file" id="import-file" accept=".json,application/json" hidden>
       <p class="small muted" style="margin-top:10px">Export saves a file of all your data. On iPhone, choose "Save to Files" (iCloud Drive is a good spot). To restore, tap Import and pick that file.</p>
     </div>
+
+    <a class="btn secondary full" href="#health" style="margin-bottom:14px">❤️ Apple Health setup</a>
 
     <div class="card soft">
       <h3>Coming soon</h3>

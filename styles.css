@@ -403,3 +403,10 @@ details.card summary { cursor: pointer; min-height: 28px; }
   .confetti { display: none; }
   .celebrate-card { animation: none; }
 }
+
+/* ---------- Apple Health ---------- */
+.health-table { display: grid; grid-template-columns: 1.2fr 1fr 0.8fr 0.8fr; gap: 8px 6px; align-items: center; }
+.goal-hit { color: #2b8a7e; font-weight: 700; }
+.guide { padding-left: 20px; margin: 10px 0; }
+.guide li { margin-bottom: 8px; }
+.guide pre { background: var(--card); border-radius: 10px; padding: 10px; white-space: pre-wrap; font-size: 13px; margin: 6px 0 0; }
