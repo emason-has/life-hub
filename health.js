@@ -35,12 +35,18 @@ function readSleep(text) {
 
 function readHealthText(text) {
   const out = { steps: null, sleep: null, resting: null, weight: null, workouts: "" };
-  let found = false;
+  let found = false, inSteps = false;
   for (const line of String(text || "").split("\n")) {
     const m = line.match(/^\s*([a-z ]+?)\s*[:=]\s*(.*)$/i);
-    if (!m) continue;
+    if (!m) {
+      // Steps sometimes arrive split over several lines ("0" then "2663"): add them up.
+      const extra = firstNumber(line);
+      if (inSteps && extra !== null) out.steps = (out.steps || 0) + extra;
+      continue;
+    }
     const key = m[1].toLowerCase().trim(), value = m[2].trim();
-    if (key.startsWith("step")) { out.steps = firstNumber(value); found = true; }
+    inSteps = key.startsWith("step");
+    if (inSteps) { out.steps = firstNumber(value); found = true; }
     else if (key.startsWith("sleep")) { out.sleep = readSleep(value); found = true; }
     else if (key.startsWith("rest") || key.includes("heart")) { out.resting = firstNumber(value); found = true; }
     else if (key.startsWith("weight")) { out.weight = firstNumber(value); found = true; }
