@@ -23,14 +23,15 @@ function firstNumber(text) {
   return m ? Number(m[0]) : null;
 }
 
-// Sleep can arrive as "7.5", "7 hr 30 min", "7:30" or "450" (minutes).
+// Sleep can arrive as "7.5", "7 hr 30 min", "7:30", "450" (minutes) or "26640" (seconds).
 function readSleep(text) {
   const t = String(text || "").toLowerCase();
   const hm = t.match(/(\d+(?:\.\d+)?)\s*(?:hours?|hrs?|h|:)\s*(\d+)?/);
   if (hm) return Math.round((Number(hm[1]) + (Number(hm[2]) || 0) / 60) * 10) / 10;
   const n = firstNumber(t);
   if (n === null) return null;
-  return n > 24 ? Math.round((n / 60) * 10) / 10 : n;
+  if (n > 1440) return Math.round((n / 3600) * 10) / 10;   // seconds (e.g. 26640)
+  return n > 24 ? Math.round((n / 60) * 10) / 10 : n;     // minutes (e.g. 444)
 }
 
 function readHealthText(text) {
