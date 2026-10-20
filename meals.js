@@ -18,7 +18,8 @@ const UNITS = ["kg", "g", "ml", "l", "cup", "tbsp", "tsp", "scoop", "tin", "can"
 function parseIngredient(line) {
   let text = line.trim().replace(/^[-•*·▪]\s*/, "");
   text = text.replace(/(\d)?\s*([½¼¾⅓⅔])/g, (m, whole, f) => (whole || "0") + FRACTIONS[f]);
-  // "1 1/2" becomes 1.5, "1/2" becomes 0.5
+  // A range like "1 - 2 tsp" uses the bigger number. "1 1/2" becomes 1.5, "1/2" becomes 0.5.
+  text = text.replace(/^\d+(?:\.\d+)?\s*[-–]\s*(\d+(?:\.\d+)?)/, "$1");
   text = text.replace(/^(\d+)\s+(\d+)\/(\d+)/, (m, w, a, b) => String(Number(w) + Math.round((a / b) * 100) / 100));
   text = text.replace(/^(\d+)\/(\d+)/, (m, a, b) => String(Math.round((a / b) * 100) / 100));
   const m = text.match(/^(\d+(?:\.\d+)?)\s*(.*)$/);
@@ -30,7 +31,9 @@ function parseIngredient(line) {
     if (UNITS.includes(word)) { unit = word; rest = u[2]; }
   }
   rest = rest.replace(/^of\s+/i, "");
-  return { qty: Number(m[1]), unit, name: rest || text };
+  // Keep just the food for the shopping list: "chicken breast, cut in pieces (3 cm)" becomes "chicken breast".
+  const food = rest.replace(/\(.*?\)/g, "").split(",")[0].trim();
+  return { qty: Number(m[1]), unit, name: food || rest || text };
 }
 
 // Pulls the name, ingredients, method, link and protein out of a pasted
@@ -38,14 +41,15 @@ function parseIngredient(line) {
 function readPastedRecipe(text) {
   const link = (text.match(/https?:\/\/\S+/) || [""])[0];
   const protein = text.match(/(\d+)\s*g\s*(?:of\s*)?protein/i) || text.match(/protein[:\s]*(\d+)\s*g/i);
-  const serves = text.match(/(?:serves|makes|servings?)[:\s]*(\d+)/i);
+  const serves = text.match(/(?:serves|makes|servings?|serving size)[:\s]*(\d+)/i) || text.match(/(\d+)\s*portions?/i);
   const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
   const intro = [], ingredients = [], method = [];
   let section = "intro";
   for (const line of lines) {
     const words = line.toLowerCase().replace(/[^a-z ]/g, "").trim();
-    if (/^(ingredients?|youll need|you need|what you need)/.test(words)) { section = "ingredients"; continue; }
-    if (/^(method|instructions|directions|steps|how to)/.test(words)) { section = "method"; continue; }
+    // A heading is a short line on its own, like "Ingredients:" or "Preparation" (Cookidoo).
+    if (/^(ingredients?|youll need|you need|what you need)$/.test(words)) { section = "ingredients"; continue; }
+    if (/^(method|instructions|directions|steps|preparation|how to|how to make it)$/.test(words)) { section = "method"; continue; }
     if (/^(#\S+\s*)+$/.test(line) || line === link) continue;   // skip hashtag lines and the link
     ({ intro, ingredients, method })[section].push(line);
   }
@@ -129,7 +133,7 @@ function pickRecipes(meal, count, used, filter = () => true) {
 // "Surprise me": a full week built around batch cooking.
 //   Mon-Wed dinners = the big Sunday/Monday cook
 //   Thu-Sat dinners = the quick Wednesday top-up
-//   Sunday dinner   = something quick and fresh
+//   Sunday dinner   = something quick and fresh, or now and then a slow cooker meal
 function surpriseWeek(monday) {
   const used = lastPlanned(monday);
   const prep = (r) => r.tags.includes("Meal prep friendly");
@@ -137,7 +141,8 @@ function surpriseWeek(monday) {
   const [s1, s2] = pickRecipes("snack", 2, used);
   const [d1, d2] = pickRecipes("dinner", 2, used, prep);
   const notBatch = (r) => r !== d1 && r !== d2;
-  const [d3] = pickRecipes("dinner", 1, used, (r) => notBatch(r) && r.tags.includes("Quick"))
+  const sunday = Math.random() < 0.5 ? "Slow cooker" : "Quick";
+  const [d3] = pickRecipes("dinner", 1, used, (r) => notBatch(r) && r.tags.includes(sunday))
     .concat(pickRecipes("dinner", 1, used, notBatch));
   const plan = {};
   WEEK_DAYS.forEach((day, i) => {
@@ -159,7 +164,8 @@ function batchPlan(monday) {
   return {
     big: names(["Mon-dinner", "Tue-dinner", "Wed-dinner"]).concat(names(prepKeys, true)),
     topup: names(["Thu-dinner", "Fri-dinner", "Sat-dinner"]),
-    fresh: names(["Sun-dinner"])
+    sunday: [findRecipe(plan["Sun-dinner"])].filter(Boolean)
+      .map((r) => r.tags.includes("Slow cooker") ? `${r.name} (start it in the morning)` : r.name)
   };
 }
 
@@ -274,7 +280,7 @@ function planScreen() {
       <h2>Batch cooking 🍳</h2>
       <p><strong>Big cook (Sun or Mon):</strong> ${list(batch.big)}</p>
       <p><strong>Wednesday top-up:</strong> ${list(batch.topup)}</p>
-      <p><strong>Sunday dinner, cook fresh:</strong> ${list(batch.fresh)}</p>
+      <p><strong>Sunday dinner:</strong> ${list(batch.sunday)}</p>
       <p class="small muted">Rough day? There's a freezer meal for that. Weekday lunches are free at work: pick the curry or protein and fill up on salad and veg.</p>
     </div>
 

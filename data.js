@@ -225,7 +225,7 @@ const TIIMO = [
 
 const STORES = ["Aldi", "Coles", "Woolworths"];   // first one is the default
 
-const RECIPE_TAGS = ["High protein", "Quick", "Meal prep friendly", "Freezer friendly"];
+const RECIPE_TAGS = ["High protein", "Quick", "Meal prep friendly", "Freezer friendly", "Slow cooker", "Thermomix"];
 
 // What gets planned each day (weekday lunches are free at work).
 const MEAL_SLOTS = [
@@ -324,7 +324,11 @@ const STARTER_RECIPES = [
   { id: "r-chilli", name: "Rough Monday beef chilli (freezer)", meal: "dinner", serves: 4, protein: 35, rough: true,
     tags: ["High protein", "Meal prep friendly", "Freezer friendly"],
     ingredients: ["500g Lean beef mince", "400g Kidney beans", "800g Diced tomatoes", "1 Brown onion", "1 Capsicum", "2 Garlic cloves", "2 tbsp Chilli seasoning", "300g Rice"],
-    method: "Brown mince with onion, garlic and capsicum. Add seasoning, tomatoes and drained beans, simmer 25 min. Freeze in portions. On a rough Monday: microwave and serve with microwave rice." }
+    method: "Brown mince with onion, garlic and capsicum. Add seasoning, tomatoes and drained beans, simmer 25 min. Freeze in portions. On a rough Monday: microwave and serve with microwave rice." },
+  { id: "r-slow-chicken", name: "Slow cooker honey garlic chicken", meal: "dinner", serves: 4, protein: 40,
+    tags: ["High protein", "Meal prep friendly", "Slow cooker"],
+    ingredients: ["800g Chicken thigh", "4 tbsp Soy sauce", "3 tbsp Honey", "4 Garlic cloves", "1 Brown onion", "300g Rice", "500g Frozen veg"],
+    method: "Weekend morning: put chicken, sliced onion, garlic, soy sauce and honey in the slow cooker. Low for 6 hours (or high for 3-4). Shred with two forks. Serve on rice with steamed veg. Leftovers make great lunches or Monday dinner." }
 ];
 
 

@@ -3,7 +3,7 @@
 //
 // When you change any app file later, bump the version number below
 // (v1 -> v2) so phones know to grab the fresh copy.
-const CACHE = "life-hub-v4";
+const CACHE = "life-hub-v5";
 
 const FILES = [
   "./",

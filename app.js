@@ -39,7 +39,8 @@ function blankData() {
     shopping: {},     // { "2026-10-26": { checked: { "oat": true }, extras: ["Coffee pods"] } }
     storeFor: {},     // { "protein powder": "Woolworths" }  (remembered store for each item)
     staples: STAPLES.slice(),
-    chores: CLEANING_TASKS.map((c) => ({ ...c, lastDone: null }))  // cleaning tasks + when last done
+    chores: CLEANING_TASKS.map((c) => ({ ...c, lastDone: null })),  // cleaning tasks + when last done
+    seenStarters: STARTER_RECIPES.map((r) => r.id)   // starter recipes already offered (so deleted ones stay deleted)
   };
 }
 
@@ -51,6 +52,11 @@ function loadData() {
       const merged = { ...fresh, ...saved, settings: { ...fresh.settings, ...saved.settings } };
       // The trip moved from "around 25 Feb" to arriving 15 Feb.
       if (merged.settings.baliDate === "2027-02-25") merged.settings.baliDate = "2027-02-15";
+      // New starter recipes added in later updates appear once (deleted ones don't come back).
+      const firstTen = ["r-oats", "r-bowls", "r-stirfry", "r-steak", "r-pasta", "r-balls", "r-banana-bread", "r-yoghurt", "r-smoothie", "r-chilli"];
+      const seen = saved.seenStarters || (saved.recipes ? firstTen : STARTER_RECIPES.map((r) => r.id));
+      STARTER_RECIPES.filter((r) => !seen.includes(r.id)).forEach((r) => merged.recipes.push(JSON.parse(JSON.stringify(r))));
+      merged.seenStarters = STARTER_RECIPES.map((r) => r.id);
       return merged;
     }
   } catch (e) { /* nothing saved yet, or unreadable: start fresh */ }
