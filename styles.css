@@ -1,0 +1,310 @@
+/* =====================================================================
+   LOOK AND FEEL
+   The colours are set once here as "variables". Change a colour here and
+   it changes everywhere in the app.
+   ===================================================================== */
+:root {
+  --sand: #f6efe4;        /* page background */
+  --card: #fffdf9;        /* cards */
+  --ink: #1d3b47;         /* main text */
+  --muted: #5f7a84;       /* softer text */
+  --ocean: #2a7f9e;       /* main buttons */
+  --ocean-soft: #d8eef2;  /* light blue backgrounds */
+  --seafoam: #7cc6be;     /* ticks, success */
+  --seafoam-soft: #e2f4f1;
+  --coral: #e98b6d;       /* gentle highlights */
+  --coral-soft: #fbe6dd;
+  --sun: #f6c27a;
+  --line: #e7ddcc;
+  --shadow: 0 2px 10px rgba(29, 59, 71, 0.07);
+  --radius: 18px;
+}
+
+/* Softer evening colours if your phone is in dark mode */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --sand: #12232b;
+    --card: #1a313b;
+    --ink: #eaf4f5;
+    --muted: #9fb8bf;
+    --ocean: #5ab3cf;
+    --ocean-soft: #1f4552;
+    --seafoam: #7cc6be;
+    --seafoam-soft: #1d4440;
+    --coral: #f0a088;
+    --coral-soft: #4a3029;
+    --line: #2a4652;
+    --shadow: none;
+  }
+}
+
+* { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--sand);
+  color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+  font-size: 17px;
+  line-height: 1.45;
+  -webkit-tap-highlight-color: transparent;
+}
+
+main {
+  max-width: 640px;
+  margin: 0 auto;
+  /* leaves room for the notch at the top and the tab bar at the bottom */
+  padding: calc(env(safe-area-inset-top) + 16px) 16px calc(env(safe-area-inset-bottom) + 100px);
+}
+
+h1 { font-size: 28px; margin: 4px 0 4px; letter-spacing: -0.02em; }
+h2 { font-size: 20px; margin: 0 0 10px; }
+h3 { font-size: 17px; margin: 0 0 6px; }
+p { margin: 0 0 10px; }
+.sub { color: var(--muted); margin-bottom: 16px; }
+.muted { color: var(--muted); font-size: 15px; }
+.small { font-size: 14px; }
+
+/* ---------- Cards ---------- */
+.card {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 14px;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--line);
+}
+.card.ocean { background: linear-gradient(135deg, #2a7f9e, #4fa3b8); color: #fff; border: none; }
+.card.ocean .muted { color: rgba(255, 255, 255, 0.85); }
+.card.soft { background: var(--ocean-soft); border: none; }
+.card.warm { background: var(--coral-soft); border: none; }
+.card.today { border: 2px solid var(--ocean); }
+
+.row { display: flex; align-items: center; gap: 10px; }
+.row.between { justify-content: space-between; }
+.wrap { flex-wrap: wrap; }
+.grow { flex: 1; }
+
+.big-number { font-size: 44px; font-weight: 700; line-height: 1; letter-spacing: -0.03em; }
+
+.pill {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--ocean-soft);
+  color: var(--ink);
+}
+.pill.win { background: var(--seafoam); color: #0f3330; }
+.pill.coral { background: var(--coral-soft); }
+
+/* ---------- Buttons (big for gym thumbs) ---------- */
+button, .btn {
+  font: inherit;
+  font-weight: 600;
+  border: none;
+  border-radius: 14px;
+  min-height: 50px;
+  padding: 12px 18px;
+  background: var(--ocean);
+  color: #fff;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+button:active, .btn:active { transform: scale(0.98); }
+button.secondary, .btn.secondary { background: var(--ocean-soft); color: var(--ink); }
+button.ghost { background: transparent; color: var(--ocean); padding: 8px 10px; min-height: 44px; }
+button.full, .btn.full { width: 100%; }
+button.small-btn { min-height: 44px; padding: 8px 14px; font-size: 15px; }
+
+/* ---------- Tick boxes ---------- */
+.tick {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
+  padding: 10px 12px;
+  margin: 6px 0;
+  border-radius: 14px;
+  background: var(--sand);
+  color: var(--ink);
+  font-weight: 500;
+  text-align: left;
+  justify-content: flex-start;
+}
+.tick .box {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  border: 2px solid var(--muted);
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+}
+.tick.on { background: var(--seafoam-soft); }
+.tick.on .box { background: var(--seafoam); border-color: var(--seafoam); color: #0f3330; }
+.tick.on .box::after { content: "✓"; font-weight: 800; }
+.tick .label { flex: 1; }
+.tick .open { color: var(--ocean); font-size: 15px; font-weight: 600; white-space: nowrap; }
+
+/* ---------- Segmented switches (like Normal / Minimum week) ---------- */
+.seg {
+  display: flex;
+  background: var(--ocean-soft);
+  border-radius: 14px;
+  padding: 4px;
+  gap: 4px;
+  margin-bottom: 14px;
+}
+.seg button {
+  flex: 1;
+  background: transparent;
+  color: var(--ink);
+  min-height: 44px;
+  font-size: 15px;
+  padding: 8px;
+}
+.seg button.on { background: var(--card); box-shadow: var(--shadow); }
+
+/* ---------- Forms ---------- */
+label.field { display: block; margin-bottom: 12px; font-weight: 600; font-size: 15px; }
+input, textarea, select {
+  font: inherit;
+  width: 100%;
+  margin-top: 6px;
+  min-height: 50px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--ink);
+}
+textarea { min-height: 80px; resize: vertical; }
+
+/* Weight +/- stepper and rep boxes in the workout screen */
+.stepper { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
+.stepper button { width: 54px; min-height: 54px; padding: 0; font-size: 24px; }
+.stepper input { margin: 0; text-align: center; font-size: 22px; font-weight: 700; }
+.reps { display: flex; gap: 8px; margin: 8px 0 10px; }
+.reps input { margin: 0; text-align: center; font-size: 20px; font-weight: 700; padding: 8px 4px; }
+
+.exercise .last { font-size: 14px; color: var(--muted); }
+.saved-flag { color: #2b8a7e; font-weight: 700; font-size: 14px; }
+
+.note {
+  background: var(--coral-soft);
+  border-radius: 12px;
+  padding: 8px 12px;
+  font-size: 14px;
+  margin: 8px 0;
+}
+.suggest {
+  background: var(--seafoam-soft);
+  border-radius: 12px;
+  padding: 8px 12px;
+  font-size: 15px;
+  margin: 8px 0;
+  font-weight: 600;
+}
+
+/* Energy 1-5 buttons */
+.energy { display: flex; gap: 8px; margin: 8px 0 12px; }
+.energy button { flex: 1; background: var(--ocean-soft); color: var(--ink); padding: 0; font-size: 20px; }
+.energy button.on { background: var(--ocean); color: #fff; }
+
+/* Progress bars for goals */
+.bar { height: 12px; background: var(--ocean-soft); border-radius: 999px; overflow: hidden; margin: 6px 0 4px; }
+.bar > span { display: block; height: 100%; background: linear-gradient(90deg, var(--seafoam), var(--ocean)); border-radius: 999px; }
+
+/* Charts */
+.chart { width: 100%; height: auto; display: block; margin-top: 6px; }
+.chart .axis { stroke: var(--line); }
+.chart .line { stroke: var(--ocean); stroke-width: 3; fill: none; stroke-linejoin: round; stroke-linecap: round; }
+.chart .dot { fill: var(--ocean); }
+.chart .goal { stroke: var(--coral); stroke-dasharray: 6 6; stroke-width: 2; }
+.chart text { fill: var(--muted); font-size: 12px; }
+
+/* Simple lists (history) */
+.list { list-style: none; padding: 0; margin: 0; }
+.list li { padding: 10px 0; border-bottom: 1px solid var(--line); }
+.list li:last-child { border-bottom: none; }
+
+/* Sub-tabs inside the Fitness tab */
+.subtabs { display: flex; gap: 8px; margin-bottom: 14px; overflow-x: auto; }
+.subtabs a {
+  flex: 1;
+  text-align: center;
+  padding: 10px 12px;
+  border-radius: 999px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 15px;
+  white-space: nowrap;
+}
+.subtabs a.on { background: var(--ink); color: var(--sand); border-color: var(--ink); }
+
+.back { display: inline-block; color: var(--ocean); text-decoration: none; font-weight: 600; padding: 8px 0; margin-bottom: 4px; }
+
+/* ---------- Bottom tab bar ---------- */
+.tabbar {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  display: flex;
+  justify-content: space-around;
+  background: var(--card);
+  border-top: 1px solid var(--line);
+  padding: 6px 8px calc(env(safe-area-inset-bottom) + 6px);
+  z-index: 10;
+}
+.tabbar a {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 0;
+  min-height: 56px;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 12px;
+}
+.tabbar a .ico { font-size: 24px; line-height: 1.1; }
+.tabbar a.on { color: var(--ocean); background: var(--ocean-soft); }
+
+/* ---------- Little pop-up message ---------- */
+#toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom) + 90px);
+  transform: translateX(-50%) translateY(20px);
+  background: var(--ink);
+  color: var(--sand);
+  padding: 12px 18px;
+  border-radius: 14px;
+  font-weight: 600;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s, transform 0.25s;
+  max-width: calc(100% - 32px);
+  text-align: center;
+  z-index: 20;
+}
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* A tick box with an "Open" button beside it */
+.row > .tick { flex: 1; width: auto; }
+.row > .btn.secondary { min-height: 56px; }

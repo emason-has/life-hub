@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <!-- Makes the page fit the phone screen properly, including the notch area -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Life Hub</title>
+
+  <!-- These lines let iPhone treat the page like a real app on the home screen -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Life Hub">
+  <meta name="theme-color" content="#f6efe4">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="manifest" href="manifest.json">
+
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Each screen gets drawn inside here by app.js -->
+  <main id="app" aria-live="polite"></main>
+
+  <!-- A little pop-up message area for "Saved!" style messages -->
+  <div id="toast" role="status"></div>
+
+  <!-- The tab bar at the bottom of the screen (easy to reach with your thumb) -->
+  <nav class="tabbar" aria-label="Main">
+    <a href="#home" data-tab="home"><span class="ico">🏝️</span><span>Home</span></a>
+    <a href="#fitness" data-tab="fitness"><span class="ico">💪</span><span>Fitness</span></a>
+    <a href="#settings" data-tab="settings"><span class="ico">⚙️</span><span>Settings</span></a>
+  </nav>
+
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
