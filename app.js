@@ -6,7 +6,7 @@
 //   3. Your programme: weeks, phases, habits, wake-up time
 //   4. Ticks, weekly score and streaks
 //   5. Strength log helpers
-//   6. Screens (Home, Fitness, Workout, Progress, Settings)
+//   6. Screens (Home, Fitness, Workout, Progress, Settings, Routines)
 //   7. Buttons: what happens when you tap things
 //   8. Backup: export and import
 //   9. Start the app
@@ -32,7 +32,8 @@ function blankData() {
     log: {},          // { "hip-thrust": [ { date, weight, reps: [10,10,10,10] } ] }
     measurements: [], // [ { date, waist, hips, weight } ]
     photos: [],       // [ "2026-10-20" ]  (just the dates; photos stay in your Photos app)
-    feelings: []      // [ { date, energy, notes } ]
+    feelings: [],     // [ { date, energy, notes } ]
+    tiimoAdded: {}    // { "t-bed": true, "t-wake": "6:30am" }  (reminders already set up in Tiimo)
   };
 }
 
@@ -115,7 +116,7 @@ function habitsFor(key) {
   return PHASES.slice(0, phaseIndex(key) + 1)
     .flatMap((p) => p.habits)
     .filter((h) => !h.days || h.days.includes(day))
-    .map((h) => h.id === "woke-on-time" ? { ...h, label: `Woke up by ${wakeTarget(key)}` } : h);
+    .map((h) => h.id === "woke-on-time" ? { ...h, label: `Woke up by ${wakeTarget(key)}am` } : h);
 }
 
 function planFor(key) {
@@ -287,6 +288,7 @@ const SCREENS = {
   home: homeScreen,
   fitness: fitnessScreen,
   workout: workoutScreen,
+  routines: routinesScreen,
   settings: settingsScreen
 };
 
@@ -339,6 +341,8 @@ function homeScreen() {
       ${habitsFor(today).map((h) => tickHTML(today, h)).join("")}
     </div>
 
+    ${routinesSummaryHTML()}
+
     <div class="card soft">
       <div class="row between">
         <h2>This week</h2>
@@ -352,7 +356,7 @@ function homeScreen() {
     <div class="card">
       <h2>Current phase</h2>
       <p><strong>${phase.weeks}:</strong> ${esc(phase.name)}</p>
-      <p class="muted">Wake-up target this week: <strong>${wakeTarget()}</strong></p>
+      <p class="muted">Wake-up target this week: <strong>${wakeTarget()}am</strong></p>
     </div>
 
     ${progressRemindersHTML()}
@@ -362,6 +366,18 @@ function homeScreen() {
       <p class="muted">Your cleaning tracker arrives in Stage 4. Overdue tasks will show up here. 🧽</p>
     </div>
   `;
+}
+
+function routinesSummaryHTML() {
+  const today = todayKey();
+  const part = (name, items) => {
+    const done = doneCount(today, items);
+    return `<span class="pill ${done === items.length ? "win" : ""}">${name} ${done}/${items.length}</span>`;
+  };
+  return `<a class="card" href="#routines" style="display:block;text-decoration:none;color:inherit">
+      <div class="row between"><h2>Routines 🌅</h2><span class="muted small">Open ›</span></div>
+      <div class="row wrap" style="gap:8px">${part("Morning", MORNING)} ${part("Habits", DAILY_HABITS)} ${part("Evening", EVENING)}</div>
+    </a>`;
 }
 
 function backupReminderHTML() {
@@ -678,9 +694,156 @@ function settingsScreen() {
 
     <div class="card soft">
       <h3>Coming soon</h3>
-      <p class="small">Routines, Meals, Home, Saves and Focus tabs arrive in later stages, plus the Tiimo setup screen.</p>
+      <p class="small">Meals, Home, Saves and Focus tabs arrive in later stages.</p>
     </div>
   `;
+}
+
+
+// ----- Routines (Stage 2) -----
+// Swaps "{wake}" in a label for this week's wake-up time.
+function withWake(text, key = todayKey()) {
+  return text.replace("{wake}", wakeTarget(key) + "am");
+}
+
+function checklistHTML(key, items) {
+  return items.map((i) => tickHTML(key, { ...i, label: withWake(i.label, key) })).join("");
+}
+
+function doneCount(key, items) {
+  return items.filter((i) => isTicked(key, i.id)).length;
+}
+
+// Finishing a whole checklist also ticks the matching habit.
+function autoTicks(key) {
+  if (MORNING.every((i) => isTicked(key, i.id))) setTick(key, "morning-routine", true);
+  if (POSTURE_HOME.every((i) => isTicked(key, i.id))) setTick(key, "posture-routine", true);
+}
+
+function routinesScreen(sub = "today") {
+  const tabs = [["today", "Today"], ["posture", "Posture"], ["sunday", "Sunday"], ["tiimo", "Tiimo"]];
+  const draw = { posture: postureScreen, sunday: sundayScreen, tiimo: tiimoScreen }[sub] || routinesToday;
+  return `
+    <h1>Routines 🌅</h1>
+    <p class="sub">Small steps, every day. Wake-up target: ${wakeTarget()}am</p>
+    <nav class="subtabs">
+      ${tabs.map(([id, label]) => `<a href="#routines/${id}" class="${(sub || "today") === id ? "on" : ""}">${label}</a>`).join("")}
+    </nav>
+    ${draw()}`;
+}
+
+function routinesToday() {
+  const today = todayKey();
+  const card = (title, emoji, items, doneText) => {
+    const done = doneCount(today, items);
+    return `<div class="card">
+        <div class="row between"><h2>${title} ${emoji}</h2><span class="pill ${done === items.length ? "win" : ""}">${done}/${items.length}</span></div>
+        ${checklistHTML(today, items)}
+        ${done === items.length ? `<p class="saved-flag" style="margin-top:6px">${doneText}</p>` : ""}
+      </div>`;
+  };
+  return `
+    ${wakePlanHTML()}
+    ${card("Morning", "☀️", MORNING, "Morning done! Great start ☀️")}
+    ${card("Daily habits", "🌿", DAILY_HABITS, "Every habit ticked today. Amazing!")}
+    ${card("Evening", "🌙", EVENING, "All set for tomorrow. Sleep well 🌙")}
+    ${dayName(today) === "Sun" ? `<a class="btn full" href="#routines/sunday">Open Sunday reset 🧺</a>` : ""}
+  `;
+}
+
+// Shows 6:45 > 6:30 > 6:15 with this week highlighted.
+function wakePlanHTML() {
+  const now = wakeTarget();
+  const last = wakeTarget(addDays(todayKey(), -7));
+  const changed = now !== last && weekNumber() > 1;
+  const next = wakeTarget(addDays(todayKey(), 7));
+  return `<div class="card soft">
+      <h2>Wake-up plan ⏰</h2>
+      <p class="small">Stepping 15 min earlier each week, for an 8am start with a 45-60 min commute.</p>
+      <div class="row" style="gap:8px;margin:10px 0">
+        ${WAKE_TIMES.map((t) => `<span class="pill ${t === now ? "win" : ""}" style="flex:1;text-align:center;padding:8px">${t}</span>`).join("")}
+      </div>
+      <p><strong>This week: ${now}am.</strong> ${next !== now ? `Next week: ${next}am.` : "You've reached your goal time. Nice!"}</p>
+      ${changed ? `<p class="small">New time this week! <a href="#routines/tiimo">Update your wake-up reminder in Tiimo</a>.</p>` : ""}
+    </div>`;
+}
+
+function postureScreen() {
+  const today = todayKey();
+  return `
+    <div class="card">
+      <div class="row between"><h2>5 min home routine</h2><span class="pill">${doneCount(today, POSTURE_HOME)}/${POSTURE_HOME.length}</span></div>
+      <p class="muted small">For shoulders that roll forward at a desk. Gentle is fine.</p>
+      ${POSTURE_HOME.map((p) => `
+        ${tickHTML(today, { id: p.id, label: `${p.name} (${p.time})` })}
+        <p class="small muted" style="margin:0 4px 12px">${esc(p.how)}</p>`).join("")}
+      <div class="note">💛 ${UPPER_BODY_NOTE}</div>
+    </div>
+
+    <div class="card">
+      <div class="row between"><h2>Work check-ins</h2><span class="pill">${doneCount(today, POSTURE_WORK)}/${POSTURE_WORK.length}</span></div>
+      <p class="muted small">Tiny resets tied to things you already do.</p>
+      ${POSTURE_WORK.map((p) => `
+        ${tickHTML(today, { id: p.id, label: p.when })}
+        <p class="small muted" style="margin:0 4px 12px">${esc(p.what)}</p>`).join("")}
+    </div>`;
+}
+
+function sundayScreen() {
+  const today = todayKey();
+  const sunday = dayName(today) === "Sun" ? today : addDays(mondayOf(today), 6);
+  const items = [...SUNDAY_RESET, { id: "sun-prep", label: "Meal prep" }];
+  const done = doneCount(sunday, items);
+  return `
+    <div class="card">
+      <div class="row between"><h2>Sunday reset 🧺</h2><span class="pill ${done === items.length ? "win" : ""}">${done}/${items.length}</span></div>
+      <p class="muted small">${niceDate(sunday)} · About 10 minutes (plus meal prep). Put a couple of songs on.</p>
+      ${checklistHTML(sunday, items)}
+      ${done === items.length ? `<p class="saved-flag" style="margin-top:6px">Week sorted. Future you says thanks! 🎉</p>` : ""}
+    </div>`;
+}
+
+// The Tiimo list. Ticking "Added to Tiimo" is remembered (not daily).
+// For the wake-up reminder we remember the time, so it un-ticks when the time changes.
+function tiimoText(t) {
+  return `${t.title}: ${withWake(t.time)} (${t.days})`;
+}
+
+function tiimoScreen() {
+  const now = wakeTarget() + "am";
+  return `
+    <p class="muted">Tiimo does your reminders and visual schedule. Add each of these once, then tick it off here.</p>
+    ${TIIMO.map((t) => {
+      const saved = data.tiimoAdded[t.id];
+      const added = t.id === "t-wake" ? saved === now : !!saved;
+      const outdated = t.id === "t-wake" && saved && saved !== now;
+      return `<div class="card">
+          <div class="row between"><h3>${esc(t.title)}</h3><span class="pill">${esc(withWake(t.time))}</span></div>
+          <p class="muted small">${esc(t.days)}</p>
+          ${outdated ? `<div class="note">Time changed! Update it in Tiimo from ${esc(saved)} to ${now}.</div>` : ""}
+          <button class="tick ${added ? "on" : ""}" data-action="tiimo" data-id="${t.id}" aria-pressed="${added}">
+            <span class="box"></span><span class="label">${added ? "Added to Tiimo" : "Tick when added to Tiimo"}</span>
+          </button>
+        </div>`;
+    }).join("")}
+    <button class="full secondary" data-action="copy-tiimo">📋 Copy list as text</button>
+    <p class="small muted" style="margin-top:10px">Want different times? Tell me and I'll change them, or edit the TIIMO list in data.js.</p>
+  `;
+}
+
+// Copies text so you can paste it into another app (like Minimalist).
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch (e) {
+    const box = document.createElement("textarea");
+    box.value = text;
+    document.body.appendChild(box);
+    box.select();
+    document.execCommand("copy");
+    box.remove();
+  }
+  toast("Copied! Ready to paste 📋");
 }
 
 
@@ -698,6 +861,7 @@ const ACTIONS = {
   tick({ date, id }) {
     const on = !isTicked(date, id);
     setTick(date, id, on);
+    if (on) autoTicks(date);
     if (on && WORKOUT_KINDS.includes(kindOf(id))) toast(cheer());
     render();
   },
@@ -788,6 +952,15 @@ const ACTIONS = {
     saveData();
     render();
   },
+
+  tiimo({ id }) {
+    if (data.tiimoAdded[id] && !(id === "t-wake" && data.tiimoAdded[id] !== wakeTarget() + "am")) delete data.tiimoAdded[id];
+    else data.tiimoAdded[id] = id === "t-wake" ? wakeTarget() + "am" : true;
+    saveData();
+    render();
+  },
+
+  "copy-tiimo"() { copyText(TIIMO.map(tiimoText).join("\n")); },
 
   export() { exportBackup(); },
   import() { document.getElementById("import-file").click(); }

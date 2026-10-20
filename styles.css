@@ -308,3 +308,6 @@ textarea { min-height: 80px; resize: vertical; }
 /* A tick box with an "Open" button beside it */
 .row > .tick { flex: 1; width: auto; }
 .row > .btn.secondary { min-height: 56px; }
+
+/* Links inside text */
+p a { color: var(--ocean); font-weight: 600; }
