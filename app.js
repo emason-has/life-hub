@@ -4,9 +4,9 @@
 //   1. Saving and loading your data (stays on your phone)
 //   2. Date helpers
 //   3. Your programme: weeks, phases, habits, wake-up time
-//   4. Ticks, weekly score and streaks
-//   5. Strength log helpers
-//   6. Screens (Home, Fitness, Workout, Progress, Settings, Routines)
+//   4. Ticks
+//   5. Line chart (used by the Fitness charts)
+//   6. Screens (Home, Body measurements, Settings, Routines)
 //   7. Buttons: what happens when you tap things
 //   8. Backup: export and import
 //   9. Start the app
@@ -137,12 +137,10 @@ function habitsFor(key) {
     .map((h) => h.id === "woke-on-time" ? { ...h, label: `Woke up by ${wakeTarget(key)}am` } : h);
 }
 
-function planFor(key) {
-  return WEEK_PLAN.find((p) => p.day === dayName(key));
-}
 
-
-// ---------- 4. Ticks, weekly score and streaks ----------
+// ---------- 4. Ticks ----------
+// Habits and checklists are ticks. Workouts, streaks and the weekly score
+// live in fitness.js.
 function isTicked(key, id) {
   return !!(data.ticks[key] && data.ticks[key][id]);
 }
@@ -154,129 +152,10 @@ function setTick(key, id, on) {
   saveData();
 }
 
-// What kind of thing a tick is (gym, surf, home ...), so we can count it.
-function kindOf(id) {
-  if (id === LOW_ENERGY.id) return "low";
-  // Extra sessions: "extra-surf" is a surf, "extra-gym" a gym session, and so on.
-  if (id.startsWith("extra-")) {
-    const k = id.slice(6);
-    return ["home", "surf", "run", "light"].includes(k) ? k : "gym";
-  }
-  for (const p of WEEK_PLAN) {
-    const item = p.items.find((i) => i.id === id);
-    if (item) return item.kind;
-  }
-  return "habit";
-}
-
-const WORKOUT_KINDS = ["gym", "surf", "home", "run", "light", "low"];
-
-// Works out the score for the week starting on the given Monday.
-function weekStats(monday) {
-  let workoutDays = 0, gymDays = 0, surfHomeDays = 0;
-  for (let i = 0; i < 7; i++) {
-    const kinds = Object.keys(data.ticks[addDays(monday, i)] || {}).map(kindOf);
-    if (kinds.some((k) => WORKOUT_KINDS.includes(k))) workoutDays++;
-    if (kinds.includes("gym")) gymDays++;
-    if (kinds.some((k) => ["surf", "home", "low"].includes(k))) surfHomeDays++;
-  }
-  const mode = data.weekModes[monday] || "normal";
-  const win = mode === "minimum"
-    ? gymDays >= 2 && surfHomeDays >= 1
-    : workoutDays >= 3;
-  const summary = mode === "minimum"
-    ? `${Math.min(gymDays, 2)}/2 gym + ${Math.min(surfHomeDays, 1)}/1 surf or home`
-    : `${workoutDays}/3 workouts`;
-  return { workoutDays, gymDays, surfHomeDays, mode, win, summary };
-}
-
-// "Never miss twice" streak: counts the days you did something.
-// One missed day is fine. Only two missed days in a row ends the streak.
-// Today doesn't count against you until it's over.
-function dayStreak() {
-  const start = data.settings.startDate;
-  let streak = 0, missedInARow = 0;
-  let key = todayKey();
-  if (!data.ticks[key]) key = addDays(key, -1);
-  while (daysBetween(start, key) >= 0) {
-    if (data.ticks[key]) { streak++; missedInARow = 0; }
-    else if (++missedInARow >= 2) break;
-    key = addDays(key, -1);
-  }
-  return streak;
-}
-
-// True when yesterday was missed and today isn't ticked yet.
-function needsComeback() {
-  const y = addDays(todayKey(), -1);
-  return daysBetween(data.settings.startDate, y) >= 0 && !data.ticks[y] && !data.ticks[todayKey()];
-}
-
-// How many weeks in a row you've hit your weekly goal.
-function weekWinStreak() {
-  const thisMonday = mondayOf(todayKey());
-  let count = weekStats(thisMonday).win ? 1 : 0;
-  let monday = addDays(thisMonday, -7);
-  while (daysBetween(mondayOf(data.settings.startDate), monday) >= 0 && weekStats(monday).win) {
-    count++;
-    monday = addDays(monday, -7);
-  }
-  return count;
-}
-
-
-// ---------- 5. Strength log helpers ----------
-const ALL_EXERCISES = Object.values(WORKOUTS).flatMap((w) => w.exercises || []);
-function findExercise(id) { return ALL_EXERCISES.find((e) => e.id === id); }
-
-function history(exId) {
-  return (data.log[exId] || []).slice().sort((a, b) => a.date.localeCompare(b.date));
-}
-
-// The last session before today (so today's numbers don't hide it).
-function lastSession(exId) {
-  const past = history(exId).filter((s) => s.date < todayKey());
-  return past[past.length - 1];
-}
-function todaysSession(exId) {
-  return history(exId).find((s) => s.date === todayKey());
-}
-
-function hitAllReps(ex, session) {
-  return session.reps.length >= ex.sets && session.reps.every((r) => r >= ex.reps);
-}
-
-// Suggest going up when the last 2 sessions hit every rep at the same weight.
-function weightSuggestion(ex) {
-  const h = history(ex.id);
-  if (h.length < 2 || !ex.unit) return null;
-  const [a, b] = h.slice(-2);
-  if (!b.weight || a.weight !== b.weight || !hitAllReps(ex, a) || !hitAllReps(ex, b)) return null;
-  return b.weight + (ex.step || 2.5);
-}
-
-function bestWeight(exId) {
-  return Math.max(0, ...history(exId).map((s) => s.weight || 0));
-}
-
+// ---------- 5. Line chart ----------
 // What we chart: the weight, or the best reps if there's no weight.
 function chartValue(s) {
   return s.weight || Math.max(0, ...s.reps);
-}
-
-// Numbers you've typed on the workout screen but not saved yet.
-let drafts = {};
-let draftsDay = todayKey();
-function draftFor(ex) {
-  if (draftsDay !== todayKey()) { drafts = {}; draftsDay = todayKey(); }
-  if (!drafts[ex.id]) {
-    const t = todaysSession(ex.id), last = lastSession(ex.id);
-    drafts[ex.id] = {
-      weight: t ? t.weight : last ? last.weight : "",
-      reps: t ? t.reps.slice() : Array(ex.sets).fill(ex.reps)
-    };
-  }
-  return drafts[ex.id];
 }
 
 
@@ -295,21 +174,10 @@ function tickHTML(key, item, extra = "") {
     </button>`;
 }
 
-// A tick plus an "Open" button for items that have a workout to open.
-function planItemHTML(key, item) {
-  if (!item.workout) return tickHTML(key, item);
-  return `<div class="row">${tickHTML(key, item)}
-    <a class="btn secondary" href="#workout/${item.workout}">Open</a></div>`;
-}
-
-let weekOffset = 0;          // 0 = this week, -1 = last week ...
-let chartExercise = "leg-press";
 let feelingEnergy = null;
 
 const SCREENS = {
   home: homeScreen,
-  fitness: fitnessScreen,
-  workout: workoutScreen,
   routines: routinesScreen,
   settings: settingsScreen
 };
@@ -319,7 +187,8 @@ function render() {
   const draw = SCREENS[screen] || homeScreen;
   document.getElementById("app").innerHTML = draw(...rest);
   // Screens that live under another tab (a workout is part of Fitness, etc.)
-  const parentTab = { workout: "fitness", recipe: "meals", pick: "meals", settings: "home", health: "home" };
+  const parentTab = { session: "fitness", tpl: "fitness", ex: "fitness", pickex: "fitness", train: "fitness", wlog: "fitness",
+    recipe: "meals", pick: "meals", settings: "home", health: "home" };
   const tab = parentTab[screen] || (SCREENS[screen] ? screen : "home");
   document.querySelectorAll(".tabbar a").forEach((a) => a.classList.toggle("on", a.dataset.tab === tab));
 }
@@ -330,8 +199,7 @@ function homeScreen() {
   const hour = new Date().getHours();
   const hello = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
   const phase = PHASES[phaseIndex()];
-  const plan = planFor(today);
-  const stats = weekStats(mondayOf(today));
+  const stats = weekScore(mondayOf(today));
   const streak = dayStreak();
   const weekWins = weekWinStreak();
 
@@ -346,12 +214,11 @@ function homeScreen() {
 
     ${baliHTML()}
 
-    <div class="card">
-      <div class="row between"><h2>Today's workout</h2><span class="pill">${plan.day}</span></div>
-      <p class="muted">${esc(plan.title)}</p>
-      ${plan.items.map((i) => planItemHTML(today, i)).join("")}
-      ${tickHTML(today, LOW_ENERGY)}
-    </div>
+    ${fit().active ? `<a class="btn full" href="#train" style="margin-bottom:14px">▶️ Back to your workout</a>` : ""}
+
+    ${todayFitnessHTML()}
+
+    ${statusHomeHTML()}
 
     <div class="card">
       <div class="row between"><h2>Today's habits</h2><span class="pill">Phase ${phase.num}</span></div>
@@ -369,7 +236,7 @@ function homeScreen() {
     <div class="card soft">
       <div class="row between">
         <h2>This week</h2>
-        ${stats.win ? `<span class="pill win">Week won! 🎉</span>` : `<span class="pill">${stats.mode === "minimum" ? "Minimum week" : "Normal week"}</span>`}
+        ${stats.win ? `<span class="pill win">Week won! 🎉</span>` : `<span class="pill">${WEEK_SUGGESTIONS[stats.mode].label} week</span>`}
       </div>
       <p><strong>${stats.summary}</strong></p>
       <p>🔥 ${streak}-day streak · 🏆 ${weekWins} week${weekWins === 1 ? "" : "s"} won in a row</p>
@@ -451,192 +318,7 @@ function progressRemindersHTML() {
     </div>`;
 }
 
-// ----- Fitness -----
-function fitnessScreen(sub = "week") {
-  const tabs = [["week", "This week"], ["workouts", "Workouts"], ["progress", "Progress"]];
-  const body = sub === "workouts" ? workoutsList() : sub === "progress" ? progressScreen() : weekScreen();
-  return `
-    <h1>Fitness 💪</h1>
-    <p class="sub">Week ${weekNumber()} · Phase ${PHASES[phaseIndex()].num}</p>
-    <nav class="subtabs">
-      ${tabs.map(([id, label]) => `<a href="#fitness/${id}" class="${(sub || "week") === id ? "on" : ""}">${label}</a>`).join("")}
-    </nav>
-    ${body}`;
-}
-
-function weekScreen() {
-  const today = todayKey();
-  const monday = addDays(mondayOf(today), weekOffset * 7);
-  const stats = weekStats(monday);
-  const label = weekOffset === 0 ? "This week" : weekOffset === -1 ? "Last week" : weekOffset === 1 ? "Next week" : `Week of ${niceDate(monday)}`;
-
-  const days = [];
-  for (let i = 0; i < 7; i++) {
-    const key = addDays(monday, i);
-    const plan = planFor(key);
-    days.push(`
-      <div class="card ${key === today ? "today" : ""}">
-        <div class="row between">
-          <h3>${niceDate(key)}${key === today ? " · Today" : ""}</h3>
-        </div>
-        <p class="muted small">${esc(plan.title)}</p>
-        ${plan.items.map((item) => planItemHTML(key, item)).join("")}
-        ${tickHTML(key, LOW_ENERGY)}
-      </div>`);
-  }
-
-  return `
-    <div class="row between">
-      <button class="ghost" data-action="week" data-step="-1" aria-label="Previous week">‹ Prev</button>
-      <button class="ghost" data-action="week" data-step="0"><strong>${label}</strong></button>
-      <button class="ghost" data-action="week" data-step="1" aria-label="Next week">Next ›</button>
-    </div>
-
-    <div class="seg" role="group" aria-label="Week type">
-      <button class="${stats.mode === "normal" ? "on" : ""}" data-action="mode" data-monday="${monday}" data-mode="normal">Normal week</button>
-      <button class="${stats.mode === "minimum" ? "on" : ""}" data-action="mode" data-monday="${monday}" data-mode="minimum">Minimum week</button>
-    </div>
-
-    <div class="card soft">
-      <div class="row between">
-        <strong>${stats.summary}</strong>
-        ${stats.win ? `<span class="pill win">Win! 🎉</span>` : ""}
-      </div>
-      <p class="small muted" style="margin-top:6px">
-        ${stats.mode === "minimum"
-          ? "Busy week? 2 gym sessions + 1 surf or home session is still a win."
-          : "Aim for 3 workouts. Low-energy yoga or Pilates counts too."}
-      </p>
-    </div>
-
-    ${days.join("")}
-  `;
-}
-
-function workoutsList() {
-  return `
-    <p class="muted">5 min warm-up first. Rest 60-90 sec between sets.</p>
-    ${Object.entries(WORKOUTS).map(([key, w]) => {
-      const ids = (w.exercises || []).map((e) => e.id);
-      const dates = ids.flatMap((id) => history(id).map((s) => s.date)).sort();
-      const last = dates.pop();
-      return `<a class="card" href="#workout/${key}" style="display:block;text-decoration:none;color:inherit">
-          <div class="row between"><h3>${esc(w.name)}</h3><span class="pill">${w.day}</span></div>
-          <p class="muted small">${w.length}${last ? ` · Last logged ${niceDate(last)}` : ""}</p>
-        </a>`;
-    }).join("")}
-  `;
-}
-
-// ----- One workout -----
-function workoutScreen(key) {
-  const w = WORKOUTS[key];
-  if (!w) return `<a class="back" href="#fitness/workouts">‹ Workouts</a><p>Workout not found.</p>`;
-  const body = w.blocks ? homeSessionHTML(key, w) : w.exercises.map(exerciseHTML).join("");
-  return `
-    <a class="back" href="#fitness/workouts">‹ Workouts</a>
-    <h1>${esc(w.name)}</h1>
-    <p class="sub">${w.day} · ${w.length} · 5 min warm-up · rest 60-90 sec</p>
-    ${w.kit ? `<p class="muted small">You'll need: ${esc(w.kit)}</p>` : ""}
-    ${body}
-    <button class="full" data-action="workout-done" data-workout="${key}">${doneTodayLabel(key)}</button>
-  `;
-}
-
-function homeSessionHTML(key, w) {
-  const today = todayKey();
-  return w.blocks.map((b) => `
-    <div class="card">
-      ${tickHTML(today, { id: b.id, label: `${b.name} (${b.mins} min)` })}
-      <p class="muted small">${esc(b.moves)}</p>
-      ${b.upper ? `<div class="note">💛 ${UPPER_BODY_NOTE}</div>` : ""}
-    </div>`).join("");
-}
-
-function exerciseHTML(ex) {
-  const d = draftFor(ex);
-  const last = lastSession(ex.id);
-  const saved = todaysSession(ex.id);
-  const suggestion = weightSuggestion(ex);
-  const repWord = ex.repsLabel || "reps";
-  return `
-    <div class="card exercise">
-      <div class="row between">
-        <h3>${esc(ex.name)}</h3>
-        <span class="pill">${ex.sets} x ${ex.reps}${ex.repsLabel ? " " + ex.repsLabel : ""}</span>
-      </div>
-      ${ex.note ? `<p class="muted small">${esc(ex.note)}</p>` : ""}
-      ${ex.upper ? `<div class="note">💛 ${UPPER_BODY_NOTE}</div>` : ""}
-      <p class="last">${last ? `Last time (${niceDate(last.date)}): ${last.weight ? `${last.weight} ${ex.unit} · ` : ""}${last.reps.join(", ")} ${repWord}` : "First time logging this one. Start light!"}</p>
-      ${suggestion ? `<div class="suggest">🌟 You hit every rep twice in a row. Ready to try ${suggestion} ${ex.unit}?</div>` : ""}
-
-      ${ex.unit ? `
-        <label class="small muted">Weight (${ex.unit})</label>
-        <div class="stepper">
-          <button class="secondary" data-action="step" data-ex="${ex.id}" data-dir="-1" aria-label="Less weight">−</button>
-          <input type="number" inputmode="decimal" step="0.5" min="0" data-draft="weight" data-ex="${ex.id}" value="${esc(d.weight)}" placeholder="kg">
-          <button class="secondary" data-action="step" data-ex="${ex.id}" data-dir="1" aria-label="More weight">+</button>
-        </div>` : ""}
-
-      <label class="small muted">${repWord[0].toUpperCase() + repWord.slice(1)} per set</label>
-      <div class="reps">
-        ${d.reps.map((r, i) => `<input type="number" inputmode="numeric" min="0" data-draft="rep" data-ex="${ex.id}" data-set="${i}" value="${esc(r)}" aria-label="Set ${i + 1}">`).join("")}
-      </div>
-
-      <div class="row between">
-        <span class="saved-flag">${saved ? "✓ Saved today" : ""}</span>
-        <button class="small-btn" data-action="save-ex" data-ex="${ex.id}">${saved ? "Update" : "Save"}</button>
-      </div>
-    </div>`;
-}
-
-// The plan tick that matches this workout today (if it's scheduled today).
-function workoutTickId(key) {
-  const item = planFor(todayKey()).items.find((i) => i.workout === key);
-  if (item) return item.id;
-  return key === "home" ? "extra-home" : "extra-gym";
-}
-function doneTodayLabel(key) {
-  return isTicked(todayKey(), workoutTickId(key)) ? "✓ Done today (tap to undo)" : "Mark workout done 🎉";
-}
-
-// ----- Progress -----
-function progressScreen() {
-  return goalsHTML() + chartHTML() + measurementsHTML() + photoHTML() + feelingsHTML();
-}
-
-function goalsHTML() {
-  return `<div class="card">
-    <h2>Goals by Bali 🏝️</h2>
-    ${daysBetween(todayKey(), data.settings.baliDate) > 0 ? `<p class="small muted">${Math.ceil(daysBetween(todayKey(), data.settings.baliDate) / 7)} weeks to go. Small steps add up.</p>` : ""}
-    ${GOALS.map((g) => {
-      const best = bestWeight(g.exercise);
-      const pct = best ? Math.max(0, Math.min(100, ((best - g.start) / (g.target - g.start)) * 100)) : 0;
-      return `<div style="margin-bottom:12px">
-          <div class="row between"><strong>${g.label}</strong><span class="small muted">Goal ${g.text}</span></div>
-          <div class="bar"><span style="width:${best >= g.target ? 100 : pct}%"></span></div>
-          <div class="small muted">${best ? `Best so far: ${best} ${g.unit}${best >= g.target ? " · Goal reached! 🎉" : ""}` : "No sessions logged yet"}</div>
-        </div>`;
-    }).join("")}
-  </div>`;
-}
-
-function chartHTML() {
-  const ex = findExercise(chartExercise) || ALL_EXERCISES[0];
-  const h = history(ex.id);
-  const goal = GOALS.find((g) => g.exercise === ex.id);
-  const options = Object.values(WORKOUTS).filter((w) => w.exercises).map((w) =>
-    `<optgroup label="${esc(w.name)}">${w.exercises.map((e) =>
-      `<option value="${e.id}" ${e.id === ex.id ? "selected" : ""}>${esc(e.name)}</option>`).join("")}</optgroup>`).join("");
-
-  return `<div class="card">
-    <h2>Strength chart 📈</h2>
-    <select data-action-change="chart">${options}</select>
-    ${h.length ? lineChart(h, goal ? goal.target : null) : `<p class="muted" style="margin-top:10px">Log a session of this exercise to see your chart.</p>`}
-    ${h.length ? `<p class="small muted">${ex.unit ? `Weight (${ex.unit})` : `Best ${ex.repsLabel || "reps"}`} each session${goal ? " · dashed line = Bali goal" : ""}</p>` : ""}
-  </div>`;
-}
-
+// ----- Line chart -----
 // Draws a simple line chart as an SVG picture.
 function lineChart(sessions, goal) {
   const W = 320, H = 170, padL = 24, padR = 12, padT = 12, padB = 26;
@@ -659,6 +341,7 @@ function lineChart(sessions, goal) {
   </svg>`;
 }
 
+// ----- Body (shown under Fitness > Progress > Body) -----
 function measurementsHTML() {
   const list = data.measurements.slice().sort((a, b) => b.date.localeCompare(a.date));
   const first = list[list.length - 1];
@@ -739,6 +422,8 @@ function settingsScreen() {
       <input type="file" id="import-file" accept=".json,application/json" hidden>
       <p class="small muted" style="margin-top:10px">Export saves a file of all your data. On iPhone, choose "Save to Files" (iCloud Drive is a good spot). To restore, tap Import and pick that file.</p>
     </div>
+
+    ${targetsSettingsHTML()}
 
     <a class="btn secondary full" href="#health" style="margin-bottom:14px">❤️ Apple Health setup</a>
 
@@ -912,51 +597,6 @@ const ACTIONS = {
     const on = !isTicked(date, id);
     setTick(date, id, on);
     if (on) autoTicks(date);
-    if (on && WORKOUT_KINDS.includes(kindOf(id))) toast(cheer());
-    render();
-  },
-
-  week({ step }) {
-    weekOffset = Number(step) === 0 ? 0 : weekOffset + Number(step);
-    render();
-  },
-
-  mode({ monday, mode }) {
-    if (mode === "normal") delete data.weekModes[monday];
-    else data.weekModes[monday] = mode;
-    saveData();
-    if (mode === "minimum") toast("Minimum week on. Busy weeks still count! 💛");
-    render();
-  },
-
-  step({ ex, dir }) {
-    const e = findExercise(ex);
-    const d = draftFor(e);
-    const next = Math.max(0, (Number(d.weight) || 0) + Number(dir) * (e.step || 2.5));
-    d.weight = Math.round(next * 10) / 10;
-    render();
-  },
-
-  "save-ex"({ ex }) {
-    const e = findExercise(ex);
-    const d = draftFor(e);
-    const session = {
-      date: todayKey(),
-      weight: Number(d.weight) || 0,
-      reps: d.reps.map((r) => Number(r) || 0)
-    };
-    data.log[ex] = (data.log[ex] || []).filter((s) => s.date !== session.date);
-    data.log[ex].push(session);
-    saveData();
-    toast(hitAllReps(e, session) ? "Every rep done! 💪" : "Saved. Nice work!");
-    render();
-  },
-
-  "workout-done"({ workout }) {
-    const id = workoutTickId(workout);
-    const on = !isTicked(todayKey(), id);
-    setTick(todayKey(), id, on);
-    if (on) toast("Workout done! 🎉 " + cheer());
     render();
   },
 
@@ -1024,20 +664,9 @@ document.addEventListener("click", (e) => {
   ACTIONS[el.dataset.action](el.dataset, el);
 });
 
-// Typing in the workout boxes updates the unsaved draft.
-document.addEventListener("input", (e) => {
-  const el = e.target;
-  if (el.dataset.draft) {
-    const d = draftFor(findExercise(el.dataset.ex));
-    if (el.dataset.draft === "weight") d.weight = el.value;
-    else d.reps[Number(el.dataset.set)] = el.value;
-  }
-});
-
 // Dropdowns, date boxes and the import file picker.
 document.addEventListener("change", (e) => {
   const el = e.target;
-  if (el.dataset.actionChange === "chart") { chartExercise = el.value; render(); }
   if (el.dataset.setting && el.value) {
     data.settings[el.dataset.setting] = el.value;
     saveData();
@@ -1095,7 +724,7 @@ function importBackup(file) {
 
 
 // ---------- 9. Start the app ----------
-// Waits until every file (including meals.js) has loaded, then draws the screen.
+// Waits until every file (fitness.js, meals.js ...) has loaded, then draws the screen.
 document.addEventListener("DOMContentLoaded", render);
 
 // Save the app files for offline use (only works once it's online at a real web address).

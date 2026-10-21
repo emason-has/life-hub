@@ -377,3 +377,148 @@ const FREQUENCIES = [
   { days: 90, label: "Every 3 months" },
   { days: 180, label: "Every 6 months" }
 ];
+
+
+// =====================================================================
+// FITNESS UPGRADE: sessions, templates, week suggestions, targets
+// Everything here is a starting point. You can edit all of it in the app.
+// =====================================================================
+
+// The kinds of session a day can have. "strength" ones count toward your
+// weekly strength target.
+const SESSION_TYPES = {
+  "full-gym":   { label: "Full gym", emoji: "🏋️", strength: true, mins: 45 },
+  "short-gym":  { label: "Short gym (20-25 min)", emoji: "⏱️", strength: true, mins: 25 },
+  "home":       { label: "Home workout", emoji: "🏠", mins: 25 },
+  "light-home": { label: "Light home (15 min)", emoji: "🌱", mins: 15 },
+  "run":        { label: "Run", emoji: "🏃‍♀️", mins: 30 },
+  "surf":       { label: "Surf", emoji: "🏄‍♀️", mins: 60 },
+  "pilates":    { label: "Pilates / yoga", emoji: "🧘‍♀️", mins: 30 },
+  "rest":       { label: "Rest", emoji: "🌴", mins: 0 }
+};
+
+// Your workouts as templates: ex = exercise id (see exercises.js),
+// rest = seconds between sets, weight = starting weight.
+const DEFAULT_TEMPLATES = [
+  { id: "t-glutes", name: "Glutes & legs", type: "full-gym", exercises: [
+    { ex: "hip-thrust", sets: 4, reps: 10, rest: 90, weight: 5 },
+    { ex: "smith-squat", sets: 3, reps: 12, rest: 90, weight: 10 },
+    { ex: "db-rdl", sets: 3, reps: 10, rest: 90, weight: 6 },
+    { ex: "bulgarian", sets: 3, reps: 10, rest: 60 },
+    { ex: "glute-kickback", sets: 3, reps: 12, rest: 60 }
+  ]},
+  { id: "t-back", name: "Back, triceps & core", type: "full-gym", exercises: [
+    { ex: "lat-pulldown", sets: 3, reps: 12, rest: 90 },
+    { ex: "cable-row", sets: 3, reps: 12, rest: 90 },
+    { ex: "face-pull", sets: 3, reps: 15, rest: 60 },
+    { ex: "tricep-pushdown", sets: 3, reps: 12, rest: 60 },
+    { ex: "tricep-kickback", sets: 3, reps: 12, rest: 60 },
+    { ex: "pallof", sets: 3, reps: 10, rest: 60 }
+  ]},
+  { id: "t-legs", name: "Legs & core", type: "full-gym", exercises: [
+    { ex: "leg-press", sets: 3, reps: 12, rest: 90, weight: 40 },
+    { ex: "step-ups", sets: 3, reps: 10, rest: 60 },
+    { ex: "lateral-walks", sets: 3, reps: 15, rest: 45 },
+    { ex: "ham-curl", sets: 3, reps: 12, rest: 60 },
+    { ex: "side-plank", sets: 3, reps: 30, rest: 45 }
+  ]},
+  { id: "t-short-glutes", name: "Short: Glutes", type: "short-gym", exercises: [
+    { ex: "hip-thrust", sets: 3, reps: 10, rest: 75, weight: 5 },
+    { ex: "bulgarian", sets: 2, reps: 10, rest: 60 },
+    { ex: "glute-kickback", sets: 2, reps: 12, rest: 45 },
+    { ex: "hip-abduction", sets: 2, reps: 15, rest: 45 }
+  ]},
+  { id: "t-short-upper", name: "Short: Back & arms", type: "short-gym", exercises: [
+    { ex: "lat-pulldown", sets: 3, reps: 12, rest: 75 },
+    { ex: "cable-row", sets: 2, reps: 12, rest: 60 },
+    { ex: "tricep-pushdown", sets: 3, reps: 12, rest: 45 },
+    { ex: "face-pull", sets: 2, reps: 15, rest: 45 }
+  ]},
+  { id: "t-home", name: "Home: Glutes, core & bands", type: "home", exercises: [
+    { ex: "glute-bridge", sets: 2, reps: 15, rest: 30 },
+    { ex: "clams", sets: 2, reps: 15, rest: 30 },
+    { ex: "lateral-walks", sets: 2, reps: 15, rest: 30 },
+    { ex: "donkey-kicks", sets: 2, reps: 12, rest: 30 },
+    { ex: "dead-bug", sets: 2, reps: 10, rest: 30 },
+    { ex: "hundred", sets: 1, reps: 100, rest: 30 },
+    { ex: "single-leg-stretch", sets: 2, reps: 10, rest: 30 },
+    { ex: "bird-dog", sets: 2, reps: 10, rest: 30 },
+    { ex: "band-pull-apart", sets: 2, reps: 15, rest: 30 },
+    { ex: "band-row", sets: 2, reps: 15, rest: 30 },
+    { ex: "band-pushdown", sets: 2, reps: 15, rest: 30 },
+    { ex: "childs-pose", sets: 1, reps: 60, rest: 0 },
+    { ex: "pigeon", sets: 1, reps: 60, rest: 0 },
+    { ex: "cat-cow", sets: 1, reps: 10, rest: 0 }
+  ]},
+  { id: "t-light", name: "Light home: Glute circuit", type: "light-home", exercises: [
+    { ex: "glute-bridge", sets: 3, reps: 15, rest: 30 },
+    { ex: "clams", sets: 2, reps: 15, rest: 30 },
+    { ex: "donkey-kicks", sets: 2, reps: 12, rest: 30 },
+    { ex: "fire-hydrant", sets: 2, reps: 12, rest: 30 },
+    { ex: "side-plank", sets: 2, reps: 20, rest: 30 }
+  ]},
+  { id: "t-home-upper", name: "Home: Band back & arms", type: "light-home", exercises: [
+    { ex: "band-pull-apart", sets: 3, reps: 15, rest: 45 },
+    { ex: "band-row", sets: 3, reps: 15, rest: 45 },
+    { ex: "band-pushdown", sets: 3, reps: 15, rest: 45 },
+    { ex: "close-pushup", sets: 2, reps: 8, rest: 45 }
+  ]},
+  { id: "t-pilates", name: "Pilates core & stretch", type: "pilates", exercises: [
+    { ex: "dead-bug", sets: 2, reps: 10, rest: 20 },
+    { ex: "hundred", sets: 1, reps: 100, rest: 20 },
+    { ex: "single-leg-stretch", sets: 2, reps: 10, rest: 20 },
+    { ex: "bird-dog", sets: 2, reps: 10, rest: 20 },
+    { ex: "side-plank", sets: 2, reps: 20, rest: 20 },
+    { ex: "cat-cow", sets: 1, reps: 10, rest: 0 },
+    { ex: "childs-pose", sets: 1, reps: 60, rest: 0 },
+    { ex: "pigeon", sets: 1, reps: 60, rest: 0 }
+  ]}
+];
+
+// What "Plan my week" suggests. Each day lists [type, template] pairs.
+// "summer" swaps Friday and Saturday so Friday can be a surf (Dec to Feb).
+const WEEK_SUGGESTIONS = {
+  normal: {
+    label: "Normal", emoji: "💪", about: "3 gym sessions, a run, a home session and a surf.",
+    days: { Mon: [["pilates", "t-pilates", "optional"]], Tue: [["full-gym", "t-glutes"]], Wed: [["run"], ["home", "t-home"]],
+            Thu: [["full-gym", "t-back"]], Fri: [["full-gym", "t-legs"]], Sat: [["surf"]], Sun: [] },
+    summer: { Fri: [["surf"]], Sat: [["full-gym", "t-legs"]] }
+  },
+  busy: {
+    label: "Busy", emoji: "⏱️", about: "2 short gym sessions plus a light home session and a surf. Still a win.",
+    days: { Mon: [], Tue: [["short-gym", "t-short-glutes"]], Wed: [["light-home", "t-light"]], Thu: [["short-gym", "t-short-upper"]],
+            Fri: [], Sat: [["surf"]], Sun: [] }
+  },
+  light: {
+    label: "Light", emoji: "🌱", about: "Low energy or a big week: 2-3 gentle sessions. Still counts.",
+    days: { Mon: [], Tue: [["light-home", "t-light"]], Wed: [], Thu: [["pilates", "t-pilates"]], Fri: [], Sat: [["run"]], Sun: [] }
+  }
+};
+
+// Weekly targets (editable in Settings). Sets count toward each
+// exercise's main muscle.
+const DEFAULT_TARGETS = {
+  strength: 3,
+  glutes: [10, 14], back: [8, 10], triceps: [6, 8], core: [6, null],
+  runs: [1, 2]
+};
+
+// Muscle groups used for targets, filters and charts.
+const MUSCLE_GROUPS = [
+  { id: "glutes", label: "Glutes", word: "Glute", color: "#e98b6d" },
+  { id: "legs", label: "Legs", word: "Leg", color: "#f2b544" },
+  { id: "back", label: "Back", word: "Back", color: "#2a7f9e" },
+  { id: "triceps", label: "Triceps", word: "Tricep", color: "#7cc6be" },
+  { id: "core", label: "Core", word: "Core", color: "#9b8ec4" },
+  { id: "shoulders", label: "Shoulders", word: "Shoulder", color: "#6cc4a1" },
+  { id: "mobility", label: "Mobility", word: "Mobility", color: "#b9a68c" }
+];
+
+// When a session drops, which exercise to add extra sets of, by muscle.
+const MAKE_UP_EXERCISES = {
+  glutes: { gym: "glute-kickback", home: "glute-bridge" },
+  legs: { gym: "leg-press", home: "bw-squat" },
+  back: { gym: "cable-row", home: "band-row" },
+  triceps: { gym: "tricep-pushdown", home: "band-pushdown" },
+  core: { gym: "pallof", home: "dead-bug" }
+};

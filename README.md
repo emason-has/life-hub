@@ -10,7 +10,11 @@ no login, no paid services.
 | `index.html` | The page itself: the frame and the bottom tab bar. |
 | `styles.css` | The look: colours, sizes, rounded cards. Colours are at the top. |
 | `data.js` | **My plan content.** Workouts, weekly plan, phases, habits, goals, routines, Tiimo times, starter recipes, staples and food preferences. Edit words here to change the plan. |
-| `app.js` | The logic: Home, Fitness, Routines and Settings screens, ticks, streaks, strength log, backup. |
+| `exercises.js` + `ex-img/` | Exercise library and form photos (from the public domain free-exercise-db, github.com/yuhonas/free-exercise-db). Cues written for Life Hub. |
+| `fitness.js` | Fitness tab: Plan my week, sessions, templates, exercise library. |
+| `workout.js` | Workout mode in the gym: sets, rest timer, personal bests, history. |
+| `progress.js` | Goals, on-track status, warnings, Bali projection, charts. |
+| `app.js` | The core: saving, dates, Home, Routines, Settings, backup. |
 | `house.js` | Everything for the House tab: cleaning tasks, Thursday clean, 15-minute blitz. |
 | `focus.js` | Everything for the Focus tab: brain dump inbox, focus timer, focus streak. |
 | `health.js` | Apple Health: the "Paste from Health" button and Shortcut setup guide. |
@@ -53,3 +57,13 @@ grabs the new version. Close and reopen the app once or twice to see it.
 Settings, then **Export backup**, then **Save to Files** (iCloud Drive is a good spot).
 To restore on a new phone: Settings, then **Import backup**, then pick the file.
 The Home screen reminds you once a month.
+
+## Updating on Netlify
+
+The app now has a folder (`ex-img`) for exercise photos. Drag the whole unzipped
+`life-hub` folder onto your site's Deploys page so the folder comes along.
+
+## Exercise library
+
+To add exercises, edit `life-hub-tools/build_library.py` and run it
+(`python3 life-hub-tools/build_library.py`). It rebuilds `exercises.js` and downloads photos.

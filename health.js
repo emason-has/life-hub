@@ -72,15 +72,8 @@ function workoutKinds(text) {
   return WATCH_WORKOUTS.filter((w) => w.words.some((word) => t.includes(word))).map((w) => w.kind);
 }
 
-// Which tick a workout kind fills on a given day: that day's plan item if
-// it has one (e.g. Tuesday gym), otherwise an "extra" session.
-function tickForKind(key, kind) {
-  if (kind === "walk") return { id: "daily-walk", label: "Daily walk" };
-  const item = planFor(key).items.find((i) => i.kind === kind);
-  if (item) return { id: item.id, label: item.label };
-  const names = { gym: "Extra gym session", surf: "Extra surf", run: "Extra run", light: "Yoga or Pilates" };
-  return { id: "extra-" + kind, label: names[kind] };
-}
+// A watch workout marks that day's matching planned session as done
+// (e.g. Tuesday's gym), or adds an extra session. See markWatchSession in fitness.js.
 
 function stepGoal() { return Number(data.settings.stepGoal) || 8000; }
 
@@ -124,7 +117,7 @@ function healthScreen() {
 function healthPreviewHTML() {
   const d = healthDraft;
   const key = healthDay === "today" ? todayKey() : addDays(todayKey(), -1);
-  const ticks = [...new Set(workoutKinds(d.workouts))].map((k) => tickForKind(key, k));
+  const ticks = [...new Set(workoutKinds(d.workouts))].map((k) => watchSessionLabel(key, k));
   const num = (id, label, value, step) => `<label class="field grow">${label}
       <input id="${id}" type="number" inputmode="decimal" step="${step}" value="${value ?? ""}"></label>`;
   return `<div class="card today">
@@ -136,8 +129,8 @@ function healthPreviewHTML() {
       <div class="row">${num("h-steps", "Steps", d.steps, 1)}${num("h-sleep", "Sleep (hours)", d.sleep, 0.1)}</div>
       <div class="row">${num("h-resting", "Resting HR", d.resting, 1)}${num("h-weight", "Weight (kg)", d.weight, 0.1)}</div>
       ${d.workouts ? `<p class="small"><strong>Watch workouts:</strong> ${esc(d.workouts)}</p>` : ""}
-      ${ticks.length ? `<p class="small" style="margin-bottom:4px">Saving will also tick:</p>
-        <ul class="small" style="margin:0 0 10px;padding-left:20px">${ticks.map((t) => `<li>${esc(t.label)}</li>`).join("")}</ul>` : ""}
+      ${ticks.length ? `<p class="small" style="margin-bottom:4px">Saving will also update:</p>
+        <ul class="small" style="margin:0 0 10px;padding-left:20px">${ticks.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>` : ""}
       ${d.workouts && !ticks.length ? `<p class="small muted">I didn't recognise that workout type, so tick it yourself in Fitness. (Tell me its name and I'll teach the app.)</p>` : ""}
       <p class="small muted">Hitting ${stepGoal().toLocaleString()} steps ticks your daily walk.</p>
       <div class="row">
@@ -219,7 +212,7 @@ Object.assign(ACTIONS, {
     const key = healthDay === "today" ? todayKey() : addDays(todayKey(), -1);
     const nums = readHealthInputs();
     data.health[key] = { ...data.health[key], ...nums, workouts: healthDraft.workouts || (data.health[key] || {}).workouts || "" };
-    [...new Set(workoutKinds(healthDraft.workouts))].forEach((k) => setTick(key, tickForKind(key, k).id, true));
+    [...new Set(workoutKinds(healthDraft.workouts))].forEach((k) => markWatchSession(key, k));
     if (nums.steps >= stepGoal()) setTick(key, "daily-walk", true);
     healthDraft = null;
     saveData();
