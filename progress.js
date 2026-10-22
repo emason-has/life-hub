@@ -30,7 +30,7 @@ function goalChecks() {
 
   // Sessions
   if (!score.planned) {
-    checks.push({ level: "amber", soft: true, text: "This week isn't planned yet - 1 minute of planning makes it easy.",
+    checks.push({ level: "amber", soft: true, text: "This week isn't planned yet. 1 minute of planning makes it easy.",
       fix: { label: "Plan my week", href: `#fitness/plan/${monday}` } });
   } else if (score.mode === "light") {
     const planned = weekKeys(monday).filter((k) => k >= today).flatMap((k) => sessionsOn(k)).filter((s) => s.status === "planned").length;

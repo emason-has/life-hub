@@ -35,7 +35,6 @@ function blankData() {
     feelings: [],     // [ { date, energy, notes } ]
     tiimoAdded: {},   // { "t-bed": true, "t-wake": "6:30am" }  (reminders already set up in Tiimo)
     recipes: JSON.parse(JSON.stringify(STARTER_RECIPES)),  // your recipe library
-    saves: [],        // Instagram saved posts (see saves.js)
     mealPlans: {},    // { "2026-10-26": { "Mon-dinner": "r-pasta", ... } }  (keyed by the Monday)
     shopping: {},     // { "2026-10-26": { checked: { "oat": true }, extras: ["Coffee pods"] } }
     storeFor: {},     // { "protein powder": "Woolworths" }  (remembered store for each item)
@@ -220,7 +219,7 @@ function render() {
   document.getElementById("app").innerHTML = draw(...rest) + (quickOpen ? quickAddHTML() : "");
   // Screens that live under another tab (a workout is part of Train, etc.)
   const parentTab = { session: "fitness", tpl: "fitness", ex: "fitness", pickex: "fitness", train: "fitness", wlog: "fitness",
-    recipe: "meals", pick: "meals", settings: "more", health: "more", house: "more", tiimo: "more", saves: "more" };
+    recipe: "meals", pick: "meals", settings: "more", health: "more", house: "more", tiimo: "more" };
   const tab = parentTab[screen] || (SCREENS[screen] ? screen : "home");
   document.querySelectorAll(".tabbar a").forEach((a) => a.classList.toggle("on", a.dataset.tab === tab));
   // Keep the chosen chip in view when a chip row is wider than the screen.
@@ -365,7 +364,6 @@ function moreScreen() {
     ${headline("Everything", "else")}
     <div class="card list-card">
       ${row("#house", "sponge", "House", due ? `${due} due` : "All good")}
-      ${row("#saves", "star", "Saves", (data.saves || []).length ? `${data.saves.filter((s) => !s.done).length} to look at` : "Import")}
       ${row("#fitness/progress/body", "chart", "Body & measurements")}
       ${row("#health", "heart", "Apple Health")}
       ${row("#tiimo", "bell", "Tiimo reminders")}
@@ -671,6 +669,7 @@ function importBackup(file) {
   reader.onload = () => {
     try {
       const incoming = JSON.parse(reader.result);
+      if (incoming && incoming.lifehubAdd) return addFromFile(incoming);
       if (!incoming || !incoming.settings || !incoming.ticks) throw new Error("not a backup");
       if (!confirm("Replace the data on this phone with this backup?")) return;
       localStorage.setItem(STORE_KEY, JSON.stringify(incoming));
@@ -686,6 +685,17 @@ function importBackup(file) {
   document.getElementById("import-file").value = "";
 }
 
+// A file of extra recipes and workouts (like the ones from your Instagram saves).
+// Adds them without touching anything else. Ones you already have are skipped.
+function addFromFile(incoming) {
+  const recipes = (incoming.recipes || []).filter((r) => !data.recipes.some((x) => x.id === r.id));
+  const workouts = (incoming.templates || []).filter((t) => !fit().templates.some((x) => x.id === t.id));
+  data.recipes.push(...recipes);
+  fit().templates.push(...workouts);
+  saveData();
+  toast(recipes.length || workouts.length ? `Added ${recipes.length} recipes and ${workouts.length} workouts` : "You already have everything in that file");
+  render();
+}
 
 // ---------- 9. Start the app ----------
 // Waits until every file (fitness.js, meals.js ...) has loaded, then draws the screen.

@@ -1,12 +1,14 @@
 /* =====================================================================
    LIFE HUB: look and feel
    Colours, sizes and corner shapes are set once below as "tokens".
-   Change a token and it changes everywhere. Dark mode follows your phone.
+   Change a token and it changes everywhere. Always light, even when the
+   phone is in dark mode, to keep the soft beach look.
    ===================================================================== */
 :root {
-  --bg-top: #d9f1eb;        /* gradient: mint at the top ... */
-  --bg-mid: #f5f1ea;        /* ... sand in the middle ... */
-  --bg-bottom: #f8e0d3;     /* ... peach at the bottom */
+  color-scheme: light;
+  --bg-top: #cdeee6;        /* gradient: sea foam at the top ... */
+  --bg-mid: #f6f2ec;        /* ... sand in the middle ... */
+  --bg-bottom: #f9d8c6;     /* ... peach at the bottom */
   --card: rgba(255, 255, 255, 0.78);
   --card-solid: #ffffff;
   --ink: #16181a;           /* text and dark buttons */
@@ -27,25 +29,6 @@
   --r-lg: 20px;
   --r-md: 14px;
   --pad: 16px;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg-top: #0f2a27;
-    --bg-mid: #121517;
-    --bg-bottom: #24170f;
-    --card: rgba(36, 40, 43, 0.78);
-    --card-solid: #25292c;
-    --ink: #f2f4f5;
-    --on-ink: #101214;
-    --muted: #9aa2a8;
-    --line: rgba(255, 255, 255, 0.09);
-    --mint-soft: #173a35;
-    --peach-soft: #3a2620;
-    --amber-soft: #392d18;
-    --late-soft: #3d221b;
-    --shadow: none;
-  }
 }
 
 * { box-sizing: border-box; }
@@ -251,7 +234,6 @@ input[type="date"] { min-height: 48px; }
 .day.is-today { border-color: var(--mint); }
 .day.on { background: var(--ink); color: rgba(255, 255, 255, 0.7); border-color: var(--ink); }
 .day.on b { color: var(--on-ink); }
-@media (prefers-color-scheme: dark) { .day.on { color: rgba(0, 0, 0, 0.6); } }
 .dots { display: flex; gap: 3px; height: 6px; }
 .dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); opacity: 0.5; }
 .dots i.done { background: var(--mint); opacity: 1; }
@@ -426,16 +408,3 @@ input[type="date"] { min-height: 48px; }
 
 /* Shopping and picker rows use a "label" span too: keep it as normal text */
 .tick .label { display: block; margin: 0; font-size: 16px; font-weight: 500; letter-spacing: normal; text-transform: none; color: var(--ink); }
-
-/* Saves */
-.save-row { gap: 12px; }
-.save-row.done { opacity: 0.55; }
-.save-txt { min-width: 0; color: var(--ink); text-decoration: none; display: flex; flex-direction: column; gap: 2px; }
-.save-txt .small { display: flex; align-items: center; gap: 4px; }
-.save-txt .small .i { width: 14px; height: 14px; }
-.save-title { font-weight: 600; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.save-flag { color: var(--amber); font-weight: 600; }
-a.next-card { color: var(--ink); text-decoration: none; }
-textarea.save-head { width: 100%; margin: 4px 0 10px; font-size: 22px; line-height: 1.25; resize: none; overflow: hidden; field-sizing: content; }
-.save-caption { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; font-size: 15px; line-height: 1.5; }
-.next-card b.save-title { display: -webkit-box; font-size: 16px; }
