@@ -66,19 +66,28 @@ function readInstaPost(item) {
   return post;
 }
 
-// Adds posts that aren't here yet. Returns how many were new.
+// Adds posts that aren't here yet. Returns how many were new and how many got a title or group.
 function addSaves(posts, sorted) {
-  const have = new Set(saves().map((s) => s.url));
-  let added = 0;
+  const have = new Map(saves().map((s) => [s.url, s]));
+  let added = 0, updated = 0;
   for (const p of posts) {
-    if (!p.url || have.has(p.url)) continue;
+    if (!p.url) continue;
+    const old = have.get(p.url);
+    if (old) {
+      // A sorted file can fill in titles, and groups you haven't picked yourself.
+      const before = old.title + old.cat;
+      if (p.title && !old.title) old.title = p.title;
+      if (sorted && p.cat && !old.picked) { old.cat = p.cat; old.unsure = p.unsure || ""; }
+      if (old.title + old.cat !== before) updated++;
+      continue;
+    }
     const group = sorted && p.cat ? { cat: p.cat, unsure: p.unsure } : guessSaveCat(p);
-    saves().push({ id: p.url.split("/").filter(Boolean).pop(), url: p.url, user: p.user, name: p.name,
+    saves().push({ id: p.url.split("/").filter(Boolean).pop(), url: p.url, title: p.title || "", user: p.user, name: p.name,
       caption: p.caption, tags: p.tags || [], ts: p.ts, cat: group.cat, unsure: group.unsure || "", done: false });
-    have.add(p.url);
+    have.set(p.url, p);
     added++;
   }
-  return added;
+  return { added, updated };
 }
 
 function importSaves(file) {
@@ -86,20 +95,22 @@ function importSaves(file) {
   reader.onload = () => {
     try {
       const incoming = JSON.parse(reader.result);
-      let added, workouts = 0;
+      let result, workouts = 0;
       if (incoming && incoming.lifehubSaves) {
         // The sorted file Claude made: groups are already set, and it can carry workouts.
-        added = addSaves(incoming.saves, true);
+        result = addSaves(incoming.saves, true);
         for (const t of incoming.templates || []) {
           if (!fit().templates.some((x) => x.id === t.id)) { fit().templates.push(clone(t)); workouts++; }
         }
       } else {
         const list = Array.isArray(incoming) ? incoming : incoming.saved_saved_media || [];
         if (!list.length || !list[0].label_values && !list[0].string_map_data) throw new Error("not saves");
-        added = addSaves(list.map(readInstaPost));
+        result = addSaves(list.map(readInstaPost));
       }
       saveData();
-      toast(`${added} new save${added === 1 ? "" : "s"} added${workouts ? `, plus ${workouts} workouts` : ""}`);
+      const { added, updated } = result;
+      toast([added && `${added} new save${added === 1 ? "" : "s"}`, updated && `${updated} updated`, workouts && `${workouts} workouts`]
+        .filter(Boolean).join(", ") || "Nothing new in that file");
       render();
     } catch (e) {
       toast("That file doesn't look like saved_posts.json.");
@@ -120,7 +131,7 @@ function recipeFromSave(s) {
   if (/\bquick\b|\b(\d+|ten|fifteen)[- ]?min/.test(text)) tags.push("Quick");
   return {
     id: "r-" + Date.now(),
-    name: tidyName(r.name) || `Recipe from @${s.user}`,
+    name: s.title || tidyName(r.name) || `Recipe from @${s.user}`,
     meal: /breakfast|oats|muffin|pancake|smoothie/.test(text) ? "breakfast" : /snack|bars?\b|balls?\b|cake/.test(text) ? "snack" : "dinner",
     serves: r.serves || 4,
     protein: r.protein || "",
@@ -169,7 +180,7 @@ function workoutFromSave(s) {
   const exercises = exercisesFromCaption(s.caption);
   const gym = exercises.some((e) => (exById(e.ex) || {}).where === "gym") || /\bgym\b|machine|cable/.test(text);
   const first = s.caption.split("\n")[0].replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, "").replace(/#\S+/g, "").trim();
-  return { id: uid("t"), name: first.length > 3 && first.length < 40 ? first : `Saved: @${s.user}`,
+  return { id: uid("t"), name: s.title || (first.length > 3 && first.length < 40 ? first : `Saved: @${s.user}`),
     type: /pilates/.test(text) ? "pilates" : gym ? "full-gym" : "home", exercises, link: s.url };
 }
 
@@ -191,7 +202,7 @@ function savesScreen(id) {
     ${headline("Saves", all.length ? `${open.length} to look at` : "from Instagram")}
     <input type="file" id="saves-file" accept=".json,application/json" hidden>
     ${all.length ? `
-      <label class="search">${icon("search")}<input id="saves-search" type="search" placeholder="Search captions or accounts" value="${esc(saveQuery)}"></label>
+      <label class="search">${icon("search")}<input id="saves-search" type="search" placeholder="Search titles, captions or accounts" value="${esc(saveQuery)}"></label>
       <nav class="chips">
         ${[["all", "All", open.length], ...Object.entries(SAVE_CATS).map(([k, c]) => [k, c.label, count(k)]),
           ...(unsure ? [["unsure", "Check", unsure]] : [])].map(([k, label, n]) =>
@@ -225,7 +236,7 @@ function filteredSaves() {
   return saves()
     .filter((s) => showDone || !s.done)
     .filter((s) => saveFilter === "all" || (saveFilter === "unsure" ? s.unsure : s.cat === saveFilter))
-    .filter((s) => !q || `${s.user} ${s.name} ${s.caption}`.toLowerCase().includes(q))
+    .filter((s) => !q || `${s.title} ${s.user} ${s.name} ${s.caption}`.toLowerCase().includes(q))
     .sort((a, b) => a.done - b.done || b.ts - a.ts);
 }
 
@@ -235,8 +246,9 @@ function savesListHTML() {
     : `<p class="muted" style="padding:12px">Nothing here.</p>`;
 }
 
-// The first useful line of a caption, as a title.
+// The save's title, or the first useful line of its caption.
 function saveTitle(s) {
+  if (s.title) return s.title;
   const line = (s.caption || "").split("\n").map((l) => l.replace(/#\S+/g, "").trim()).find((l) => l.length > 2);
   return line ? tidyName(line) : `Post by @${s.user}`;
 }
@@ -260,7 +272,8 @@ function saveScreen(id) {
   return `
     ${topBar(backBtn("#saves"), `<a class="circ" href="${esc(s.url)}" target="_blank" rel="noopener" aria-label="Open in Instagram">${icon("arrow")}</a>`)}
     <p class="small muted">@${esc(s.user)}</p>
-    <h2 class="save-head">${esc(saveTitle(s))}</h2>
+    <textarea class="title-input save-head" rows="2" data-save-title="${s.id}" aria-label="Title">${esc(saveTitle(s))}</textarea>
+    <p class="small muted" style="margin-top:-6px">Tap the title to rename it, e.g. after watching the video.</p>
     ${s.unsure ? `<p class="small muted">Not sure about the group: ${esc(s.unsure)}. Pick one below.</p>` : ""}
     <nav class="chips">
       ${Object.entries(SAVE_CATS).map(([k, c]) => `<button class="chip ${s.cat === k ? "on" : ""}" data-action="save-cat" data-id="${s.id}" data-cat="${k}">${c.label}</button>`).join("")}
@@ -313,6 +326,7 @@ Object.assign(ACTIONS, {
     const s = saveById(id);
     s.cat = cat;
     s.unsure = "";
+    s.picked = true;
     saveData();
     render();
   },
@@ -337,6 +351,11 @@ Object.assign(ACTIONS, {
 });
 
 document.addEventListener("input", (e) => {
+  if (e.target.dataset.saveTitle) {
+    saveById(e.target.dataset.saveTitle).title = e.target.value.replace(/\n/g, " ").trim();
+    saveData();
+    return;
+  }
   if (e.target.id !== "saves-search") return;
   saveQuery = e.target.value;
   document.getElementById("saves-list").innerHTML = savesListHTML();
