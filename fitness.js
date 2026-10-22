@@ -464,7 +464,7 @@ function sessionCardHTML(s, key) {
       <a class="txt" href="#session/${s.id}">
         <span class="kicker">${icon(info.icon)} ${info.label}</span>
         <b>${esc(t ? t.name : info.label)}</b>
-        <span class="meta">${[state === "Planned" ? "" : state, t ? `${t.exercises.length} ex` : "", info.mins ? `${info.mins} min` : ""].filter(Boolean).join(" · ")}</span>
+        <span class="meta">${[state === "Planned" ? "" : state, t ? `${t.exercises.length} ex` : "", s.km ? `${s.km} km` : "", (s.mins || info.mins) ? `${s.mins || info.mins} min` : ""].filter(Boolean).join(" · ")}</span>
       </a>
       ${img ? `<img src="${img}" alt="">` : `<span class="wcard-ph">${icon(info.icon)}</span>`}
       <span class="drag" data-drag="${s.id}" aria-label="Drag to move">${icon("drag")}</span>
@@ -522,12 +522,15 @@ function sessionScreen(id, keyArg) {
     <div class="card">
       ${s.type !== "rest" ? `<label class="field">Workout
         <select data-sess-tpl="${s.id}">
-          <option value="">${["run", "surf"].includes(s.type) ? "None (just log it)" : "No template"}</option>
+          <option value="">${typeInfo(s.type).cardio ? "None (just log it)" : "No template"}</option>
           ${tpls.map((t) => `<option value="${t.id}" ${s.tpl === t.id ? "selected" : ""}>${esc(t.name)}</option>`).join("")}
         </select></label>` : ""}
       <label class="field">Day
         <select data-sess-move="${s.id}">${weekKeys(monday).map((k) => `<option value="${k}" ${k === key ? "selected" : ""}>${niceDate(k)}</option>`).join("")}</select></label>
-      ${!s.tpl || ["run", "surf"].includes(s.type) ? `<label class="field">Minutes<input type="number" inputmode="numeric" data-sess-mins="${s.id}" value="${esc(s.mins || "")}"></label>` : ""}
+      ${!s.tpl || typeInfo(s.type).cardio ? `<div class="row">
+        <label class="field grow">Minutes <span class="muted">(optional)</span><input type="number" inputmode="numeric" data-sess-mins="${s.id}" value="${esc(s.mins || "")}"></label>
+        ${["walk", "run"].includes(s.type) ? `<label class="field grow">Distance, km <span class="muted">(rough)</span><input type="number" inputmode="decimal" step="0.1" data-sess-km="${s.id}" value="${esc(s.km || "")}"></label>` : ""}
+      </div>` : ""}
       <label class="field" style="margin-bottom:0">Note<input data-sess-note="${s.id}" value="${esc(s.note || "")}" placeholder="Optional"></label>
     </div>
 
@@ -572,7 +575,7 @@ function templateScreen(id) {
     ${topBar(backBtn("#fitness/workouts"), `<button class="circ" data-action="tpl-dup" data-id="${t.id}" aria-label="Duplicate">${icon("save")}</button>
       <button class="circ" data-action="tpl-delete" data-id="${t.id}" aria-label="Delete">${icon("x")}</button>`)}
     <input class="title-input" data-tpl="${t.id}" data-field="name" value="${esc(t.name)}" aria-label="Workout name">
-    <select class="type-select" data-tpl="${t.id}" data-field="type">${Object.entries(SESSION_TYPES).filter(([k]) => !["rest", "run", "surf"].includes(k)).map(([k, info]) =>
+    <select class="type-select" data-tpl="${t.id}" data-field="type">${Object.entries(SESSION_TYPES).filter(([k]) => k !== "rest" && !SESSION_TYPES[k].cardio).map(([k, info]) =>
       `<option value="${k}" ${t.type === k ? "selected" : ""}>${info.label}</option>`).join("")}</select>
 
     ${t.link ? `<a class="btn full" href="${esc(t.link)}" target="_blank" rel="noopener">${icon("arrow")} Watch the saved post</a>` : ""}
@@ -930,9 +933,10 @@ Object.assign(ACTIONS, {
     const s = addSession(key, newSession(type, null, key));
     // Pick a matching template to start with (you can change it).
     const t = fit().templates.find((x) => x.type === type);
-    if (t && !["run", "surf"].includes(type)) s.tpl = t.id;
+    if (t && !typeInfo(type).cardio) s.tpl = t.id;
     if (s.planned) s.planned.tpl = s.tpl;
-    if (key < todayKey()) s.status = "done";
+    // Past days, and a walk, run or surf added today, are logged as done.
+    if (key < todayKey() || (key === todayKey() && typeInfo(type).cardio)) s.status = "done";
     saveData();
     location.hash = `#session/${s.id}`;
   },
@@ -942,7 +946,7 @@ Object.assign(ACTIONS, {
     changeSession(id, ({ s }) => {
       s.type = type;
       const t = tplById(s.tpl);
-      if (["run", "surf"].includes(type)) s.tpl = null;
+      if (typeInfo(type).cardio) s.tpl = null;
       else if (!t || t.type !== type) s.tpl = (fit().templates.find((x) => x.type === type) || {}).id || null;
     });
     render();
@@ -1034,9 +1038,11 @@ document.addEventListener("change", (e) => {
     render();
   }
   if (el.dataset.sessMove) moveSession(el.dataset.sessMove, el.value);
-  if (el.dataset.sessMins || el.dataset.sessNote) {
-    const found = findSession(el.dataset.sessMins || el.dataset.sessNote);
-    if (el.dataset.sessMins) found.s.mins = Number(el.value) || null; else found.s.note = el.value;
+  if (el.dataset.sessMins || el.dataset.sessNote || el.dataset.sessKm) {
+    const found = findSession(el.dataset.sessMins || el.dataset.sessNote || el.dataset.sessKm);
+    if (el.dataset.sessMins) found.s.mins = Number(el.value) || null;
+    else if (el.dataset.sessKm) found.s.km = Number(el.value) || null;
+    else found.s.note = el.value;
     saveData();
   }
   if (el.dataset.tpl) {

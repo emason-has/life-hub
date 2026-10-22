@@ -35,6 +35,7 @@ function blankData() {
     feelings: [],     // [ { date, energy, notes } ]
     tiimoAdded: {},   // { "t-bed": true, "t-wake": "6:30am" }  (reminders already set up in Tiimo)
     recipes: JSON.parse(JSON.stringify(STARTER_RECIPES)),  // your recipe library
+    dump: [],         // brain dump thoughts (see dump.js)
     mealPlans: {},    // { "2026-10-26": { "Mon-dinner": "r-pasta", ... } }  (keyed by the Monday)
     shopping: {},     // { "2026-10-26": { checked: { "oat": true }, extras: ["Coffee pods"] } }
     storeFor: {},     // { "protein powder": "Woolworths" }  (remembered store for each item)
@@ -183,7 +184,10 @@ const ICONS = {
   play: '<path d="M7 5l12 7-12 7z"/>',
   save: '<path d="M5 4h11l3 3v13H5zM8 4v5h8M8 20v-6h8v6"/>',
   star: '<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/>',
-  edit: '<path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4"/>'
+  edit: '<path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4"/>',
+  walk: '<circle cx="12" cy="4" r="2"/><path d="M10 21l1.5-6L9 12l1-5 4 2 2 3M9 12l-2 2M13.5 15L15 21"/>',
+  note: '<path d="M6 3h9l3 3v15H6z"/><path d="M9 10h6M9 14h6M9 18h3"/>',
+  bolt: '<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>'
 };
 function icon(name, cls = "") {
   return `<svg class="i ${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name] || ICONS.more}</svg>`;
@@ -219,7 +223,7 @@ function render() {
   document.getElementById("app").innerHTML = draw(...rest) + (quickOpen ? quickAddHTML() : "");
   // Screens that live under another tab (a workout is part of Train, etc.)
   const parentTab = { session: "fitness", tpl: "fitness", ex: "fitness", pickex: "fitness", train: "fitness", wlog: "fitness",
-    recipe: "meals", pick: "meals", settings: "more", health: "more", house: "more", tiimo: "more" };
+    recipe: "meals", pick: "meals", settings: "more", health: "more", house: "more", tiimo: "more", dump: "more" };
   const tab = parentTab[screen] || (SCREENS[screen] ? screen : "home");
   document.querySelectorAll(".tabbar a").forEach((a) => a.classList.toggle("on", a.dataset.tab === tab));
   // Keep the chosen chip in view when a chip row is wider than the screen.
@@ -258,7 +262,7 @@ function homeScreen() {
       `<button class="circ dark" data-action="quick-open" aria-label="Add">${icon("plus")}</button>
        <a class="circ" href="#settings" aria-label="Settings">${icon("gear")}</a>`)}
     ${homeEdit ? headline("Edit", "your widgets") : headline("Let's make", "today count")}
-    ${homeEdit ? "" : backupReminderHTML()}
+    ${homeEdit ? "" : resetCardHTML() + backupReminderHTML()}
     ${fit().active && !homeEdit ? `<a class="btn full dark" href="#train" style="margin-bottom:12px">${icon("play")} Back to your workout</a>` : ""}
     ${ids.map((id, i) => homeEdit ? `<div class="w-edit">
         <div class="w-edit-bar"><span class="row" style="gap:8px">${icon(WIDGETS[id].icon)}<strong>${WIDGETS[id].name}</strong></span>
@@ -341,7 +345,8 @@ function backupReminderHTML() {
 function quickAddHTML() {
   const today = todayKey();
   const items = [
-    ["dumbbell", "Log a session today", `#session/new/${today}`],
+    ["note", "Brain dump", "#dump"],
+    ["dumbbell", "Log a workout, walk or surf", `#session/new/${today}`],
     ["calendar", "Plan my week", "#fitness/plan"],
     ["heart", "Paste from Health", null, "health-paste"],
     ["cart", "Add to shopping list", "#meals/shop"],
@@ -363,6 +368,7 @@ function moreScreen() {
   return `
     ${headline("Everything", "else")}
     <div class="card list-card">
+      ${row("#dump", "note", "Brain dump", dumpBy("inbox").length ? `${dumpBy("inbox").length} to sort` : "")}
       ${row("#house", "sponge", "House", due ? `${due} due` : "All good")}
       ${row("#fitness/progress/body", "chart", "Body & measurements")}
       ${row("#health", "heart", "Apple Health")}

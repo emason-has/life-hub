@@ -17,6 +17,7 @@ no login, no paid services.
 | `app.js` | The core: saving, dates, customisable Today widgets, More, Settings, backup. |
 | `house.js` | House (under More): jobs due this week, swipe to Later, 15-minute blitz. |
 | `health.js` | Apple Health: the "Paste from Health" button and Shortcut setup guide. |
+| `dump.js` | Brain dump (under More, optional Home widget): get thoughts out fast, sort them on Sunday, keep a done log. |
 | `meals.js` | Everything for the Food tab: recipes, planner, Surprise me, shopping list. |
 | `manifest.json` | Tells the iPhone this is an app (name, icon, colours). |
 | `sw.js` | The offline helper. Keeps a copy of the app on the phone. |

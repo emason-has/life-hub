@@ -38,7 +38,7 @@ const TIIMO = [
   { id: "t-gym", title: "Gym after work", time: "5:00pm", days: "Tue, Thu, Fri" },
   { id: "t-prep", title: "Evening prep (bag, lunch, gym gear)", time: "9:30pm", days: "Sun to Thu" },
   { id: "t-bed", title: "Bed", time: "10:15pm", days: "Every day" },
-  { id: "t-sunday", title: "Sunday reset and meal prep", time: "4:00pm", days: "Sunday" },
+  { id: "t-sunday", title: "Sunday reset: sort brain dump, plan meals, prep", time: "4:00pm", days: "Sunday" },
   { id: "t-tidy", title: "Thursday tidy", time: "7:00pm", days: "Thursday" }
 ];
 
@@ -216,8 +216,9 @@ const SESSION_TYPES = {
   "short-gym":  { label: "Short gym", icon: "timer", strength: true, mins: 25 },
   "home":       { label: "Home workout", icon: "house", mins: 25 },
   "light-home": { label: "Light home", icon: "leaf", mins: 15 },
-  "run":        { label: "Run", icon: "run", mins: 30 },
-  "surf":       { label: "Surf", icon: "wave", mins: 60 },
+  "walk":       { label: "Walk", icon: "walk", mins: 30, cardio: true },
+  "run":        { label: "Run", icon: "run", mins: 30, cardio: true },
+  "surf":       { label: "Surf", icon: "wave", mins: 60, cardio: true },
   "pilates":    { label: "Pilates / yoga", icon: "lotus", mins: 30 },
   "posture":    { label: "Posture & arm care", icon: "posture", mins: 10, care: true },
   "rest":       { label: "Rest", icon: "moon", mins: 0 }
