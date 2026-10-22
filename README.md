@@ -18,7 +18,7 @@ no login, no paid services.
 | `house.js` | House (under More): jobs due this week, swipe to Later, 15-minute blitz. |
 | `health.js` | Apple Health: the "Paste from Health" button and Shortcut setup guide. |
 | `meals.js` | Everything for the Food tab: recipes, planner, Surprise me, shopping list. |
-| `saves.js` | Saves (under More): your Instagram saved posts, sorted into groups, with Pick one for me and Add to recipes / Make it a workout. |
+| `saves.js` | Saves (under More): your saved Instagram recipes and workouts, linked to the recipes and workouts made from them. |
 | `manifest.json` | Tells the iPhone this is an app (name, icon, colours). |
 | `sw.js` | The offline helper. Keeps a copy of the app on the phone. |
 | `*.png` | App icons. |

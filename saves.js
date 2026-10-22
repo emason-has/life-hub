@@ -14,22 +14,20 @@
 // =====================================================================
 
 // ---------- 1. Groups ----------
-// Only these three are kept. Other saves are left out when you import.
+// Only these two are kept. Other saves are left out when you import.
 const SAVE_CATS = {
   recipes: { label: "Recipes", icon: "food" },
-  fitness: { label: "Workouts", icon: "dumbbell" },
-  home:    { label: "Home organising", short: "Home", icon: "house" }
+  fitness: { label: "Workouts", icon: "dumbbell" }
 };
 
 // Words that point to a group. Used for posts in a fresh Instagram export.
 const SAVE_WORDS = {
   recipes: /\b(ingredients?|recipes?|serves|servings?|protein per|calories|cals|meal ?prep|slow ?cook\w*|air ?fryer|tbsp|tsp|marinade|minced?)\b/i,
   fitness: /\b(workout|glutes?|pilates|core|gym|reps|sets|squats?|deadlift|hip thrust|posture|stretch|mobility|split|training|abs)\b/i,
-  home:    /\b(organi[sz]\w*|storage|tidy|declutter\w*|pantry|wardrobe|drawers?|under ?sink|hooks|shelv\w*|bunnings)\b/i
 };
 
 function saves() { return data.saves || (data.saves = []); }
-// Saves from groups that no longer exist (Claude & AI, Look into, Other) are cleared out.
+// Saves from groups that no longer exist (Claude & AI, Look into, Home organising, Other) are cleared out.
 if (data.saves) data.saves = data.saves.filter((s) => SAVE_CATS[s.cat]);
 function saveById(id) { return saves().find((s) => s.id === id); }
 
@@ -78,16 +76,19 @@ function addSaves(posts, sorted) {
     const old = have.get(p.url);
     if (old) {
       // A sorted file can fill in titles, and groups you haven't picked yourself.
-      const before = old.title + old.cat;
+      const before = JSON.stringify(old);
       if (p.title && !old.title) old.title = p.title;
       if (sorted && p.cat && !old.picked) { old.cat = p.cat; old.unsure = p.unsure || ""; }
-      if (old.title + old.cat !== before) updated++;
+      if (p.recipeIds && !old.recipeIds && !old.recipeId) old.recipeIds = p.recipeIds;
+      if (p.tplId && !old.tplId) old.tplId = p.tplId;
+      if (JSON.stringify(old) !== before) updated++;
       continue;
     }
     const group = sorted && p.cat ? { cat: p.cat, unsure: p.unsure } : guessSaveCat(p);
     if (!group || !SAVE_CATS[group.cat]) continue;
     saves().push({ id: p.url.split("/").filter(Boolean).pop(), url: p.url, title: p.title || "", user: p.user, name: p.name,
-      caption: p.caption, tags: p.tags || [], ts: p.ts, cat: group.cat, unsure: group.unsure || "", done: false });
+      caption: p.caption, tags: p.tags || [], ts: p.ts, cat: group.cat, unsure: group.unsure || "", done: false,
+      ...(p.recipeIds ? { recipeIds: p.recipeIds } : {}), ...(p.tplId ? { tplId: p.tplId } : {}) });
     have.set(p.url, p);
     added++;
   }
@@ -99,10 +100,13 @@ function importSaves(file) {
   reader.onload = () => {
     try {
       const incoming = JSON.parse(reader.result);
-      let result, workouts = 0;
+      let result, workouts = 0, recipes = 0;
       if (incoming && incoming.lifehubSaves) {
-        // The sorted file Claude made: groups are already set, and it can carry workouts.
+        // The sorted file Claude made: groups are already set, and it carries recipes and workouts.
         result = addSaves(incoming.saves, true);
+        for (const r of incoming.recipes || []) {
+          if (!findRecipe(r.id)) { data.recipes.push(clone(r)); recipes++; }
+        }
         for (const t of incoming.templates || []) {
           if (!fit().templates.some((x) => x.id === t.id)) { fit().templates.push(clone(t)); workouts++; }
         }
@@ -113,7 +117,7 @@ function importSaves(file) {
       }
       saveData();
       const { added, updated } = result;
-      toast([added && `${added} new save${added === 1 ? "" : "s"}`, updated && `${updated} updated`, workouts && `${workouts} workouts`]
+      toast([added && `${added} new save${added === 1 ? "" : "s"}`, updated && `${updated} updated`, recipes && `${recipes} recipes`, workouts && `${workouts} workouts`]
         .filter(Boolean).join(", ") || "Nothing new in that file");
       render();
     } catch (e) {
@@ -219,7 +223,7 @@ function savesScreen(id) {
       ${picked ? `<div class="card list-card"><p class="label" style="margin:12px 0 0">Have a look at this one</p>${saveRow(picked)}</div>` : ""}
       <div id="saves-list">${savesListHTML()}</div>`
     : `<div class="card">
-        <p>Bring in your Instagram saved posts and the recipes, workouts and home organising ones are kept and sorted. Everything else is left out.</p>
+        <p>Bring in your Instagram saved posts and the recipes and workouts are kept and sorted. Everything else is left out.</p>
         <button class="full dark" data-action="saves-import">Import saved_posts.json</button>
       </div>`}
     <details class="card drop-card">
@@ -271,21 +275,21 @@ function saveRow(s) {
 function saveScreen(id) {
   const s = saveById(id);
   if (!s) return `${topBar(backBtn("#saves"))}<p>Save not found.</p>`;
-  const recipe = s.recipeId && findRecipe(s.recipeId);
+  const recipes = (s.recipeIds || [s.recipeId]).map((r) => r && findRecipe(r)).filter(Boolean);
   const workout = s.tplId && tplById(s.tplId);
   return `
     ${topBar(backBtn("#saves"), `<a class="circ" href="${esc(s.url)}" target="_blank" rel="noopener" aria-label="Open in Instagram">${icon("arrow")}</a>`)}
     <p class="small muted">@${esc(s.user)}</p>
     <textarea class="title-input save-head" rows="2" data-save-title="${s.id}" aria-label="Title">${esc(saveTitle(s))}</textarea>
     <p class="small muted" style="margin-top:-6px">Tap the title to rename it, e.g. after watching the video.</p>
-    ${s.unsure ? `<p class="small muted">Not sure about the group: ${esc(s.unsure)}. Pick one below.</p>` : ""}
+    ${s.unsure ? `<p class="small muted"><span class="save-flag">Check:</span> ${esc(s.unsure)}</p>` : ""}
     <nav class="chips">
       ${Object.entries(SAVE_CATS).map(([k, c]) => `<button class="chip ${s.cat === k ? "on" : ""}" data-action="save-cat" data-id="${s.id}" data-cat="${k}">${c.label}</button>`).join("")}
     </nav>
     <a class="btn full dark" href="${esc(s.url)}" target="_blank" rel="noopener">Open in Instagram</a>
-    ${s.cat === "recipes" ? (recipe ? `<a class="btn full" href="#recipe/${recipe.id}">In your recipes: ${esc(recipe.name)}</a>`
+    ${s.cat === "recipes" ? (recipes.length ? recipes.map((r) => `<a class="btn full" href="#recipe/${r.id}">${icon("food")} ${esc(r.name)}</a>`).join("")
       : `<button class="full" data-action="save-recipe" data-id="${s.id}">${icon("food")} Add to my recipes</button>`) : ""}
-    ${s.cat === "fitness" ? (workout ? `<a class="btn full" href="#tpl/${workout.id}">In your workouts: ${esc(workout.name)}</a>`
+    ${s.cat === "fitness" ? (workout ? `<a class="btn full" href="#tpl/${workout.id}">${icon("dumbbell")} ${esc(workout.name)}</a>`
       : `<button class="full" data-action="save-workout" data-id="${s.id}">${icon("dumbbell")} Make it a workout</button>`) : ""}
     <button class="full" data-action="save-done" data-id="${s.id}">${s.done ? "Not done yet" : "Done / tried it"}</button>
     <div class="card"><p class="save-caption">${esc(s.caption || "No caption.")}</p></div>

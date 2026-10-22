@@ -576,6 +576,7 @@ function templateScreen(id) {
       `<option value="${k}" ${t.type === k ? "selected" : ""}>${info.label}</option>`).join("")}</select>
 
     ${t.link ? `<a class="btn full" href="${esc(t.link)}" target="_blank" rel="noopener">${icon("arrow")} Watch the saved post</a>` : ""}
+    ${t.note ? `<p class="small muted">${esc(t.note)}</p>` : ""}
     ${exSearchHTML(`tpl:${t.id}`, "Search to add an exercise", true)}
 
     <div class="card list-card">
