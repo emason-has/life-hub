@@ -14,32 +14,35 @@
 // =====================================================================
 
 // ---------- 1. Groups ----------
+// Only these three are kept. Other saves are left out when you import.
 const SAVE_CATS = {
   recipes: { label: "Recipes", icon: "food" },
-  fitness: { label: "Fitness", icon: "dumbbell" },
-  ai:      { label: "Claude & AI", icon: "star" },
-  look:    { label: "Look into", icon: "search" },
-  other:   { label: "Other", icon: "more" }
+  fitness: { label: "Workouts", icon: "dumbbell" },
+  home:    { label: "Home organising", short: "Home", icon: "house" }
 };
 
 // Words that point to a group. Used for posts in a fresh Instagram export.
 const SAVE_WORDS = {
-  recipes: /\b(ingredients?|recipe|serves|servings?|protein per|calories|cals|meal ?prep|slow ?cook|air ?fryer|dinner|lunch|breakfast|tbsp|tsp)\b/i,
+  recipes: /\b(ingredients?|recipes?|serves|servings?|protein per|calories|cals|meal ?prep|slow ?cook\w*|air ?fryer|tbsp|tsp|marinade|minced?)\b/i,
   fitness: /\b(workout|glutes?|pilates|core|gym|reps|sets|squats?|deadlift|hip thrust|posture|stretch|mobility|split|training|abs)\b/i,
-  ai:      /\b(claude|chatgpt|gpt|ai tools?|prompts?|anthropic|automation)\b/i,
-  look:    /\b(perth|cafe|restaurant|trail|hike|beach|travel|bali|visit|course|leave|holiday|guide|tips?)\b/i
+  home:    /\b(organi[sz]\w*|storage|tidy|declutter\w*|pantry|wardrobe|drawers?|under ?sink|hooks|shelv\w*|bunnings)\b/i
 };
 
 function saves() { return data.saves || (data.saves = []); }
+// Saves from groups that no longer exist (Claude & AI, Look into, Other) are cleared out.
+if (data.saves) data.saves = data.saves.filter((s) => SAVE_CATS[s.cat]);
 function saveById(id) { return saves().find((s) => s.id === id); }
 
-// Picks the group with the most matching words. "unsure" when it's a close call.
+// Picks the group with the most matching words, or null if it isn't one you keep.
+// "unsure" when it's a close call.
 function guessSaveCat(post) {
   const text = `${post.caption} ${post.tags.join(" ")} ${post.name}`;
   const scores = Object.entries(SAVE_WORDS).map(([cat, re]) =>
     [cat, (text.match(new RegExp(re.source, "gi")) || []).length]).sort((a, b) => b[1] - a[1]);
   const [best, second] = scores;
-  if (!best[1]) return { cat: "other", unsure: "No clues in the caption" };
+  if (best[1] < 2) return null;
+  // Cafe and restaurant guides mention food but aren't recipes.
+  if (best[0] === "recipes" && /\b(cafes?|restaurants?|bar|menu|visit)\b/i.test(text) && !/ingredients?/i.test(text)) return null;
   if (second[1] && second[1] >= best[1] * 0.7) return { cat: best[0], unsure: `Could also be ${SAVE_CATS[second[0]].label}` };
   return { cat: best[0] };
 }
@@ -82,6 +85,7 @@ function addSaves(posts, sorted) {
       continue;
     }
     const group = sorted && p.cat ? { cat: p.cat, unsure: p.unsure } : guessSaveCat(p);
+    if (!group || !SAVE_CATS[group.cat]) continue;
     saves().push({ id: p.url.split("/").filter(Boolean).pop(), url: p.url, title: p.title || "", user: p.user, name: p.name,
       caption: p.caption, tags: p.tags || [], ts: p.ts, cat: group.cat, unsure: group.unsure || "", done: false });
     have.set(p.url, p);
@@ -204,7 +208,7 @@ function savesScreen(id) {
     ${all.length ? `
       <label class="search">${icon("search")}<input id="saves-search" type="search" placeholder="Search titles, captions or accounts" value="${esc(saveQuery)}"></label>
       <nav class="chips">
-        ${[["all", "All", open.length], ...Object.entries(SAVE_CATS).map(([k, c]) => [k, c.label, count(k)]),
+        ${[["all", "All", open.length], ...Object.entries(SAVE_CATS).map(([k, c]) => [k, c.short || c.label, count(k)]),
           ...(unsure ? [["unsure", "Check", unsure]] : [])].map(([k, label, n]) =>
           `<button class="chip ${saveFilter === k ? "on" : ""}" data-action="saves-filter" data-f="${k}">${label} ${n}</button>`).join("")}
       </nav>
@@ -215,7 +219,7 @@ function savesScreen(id) {
       ${picked ? `<div class="card list-card"><p class="label" style="margin:12px 0 0">Have a look at this one</p>${saveRow(picked)}</div>` : ""}
       <div id="saves-list">${savesListHTML()}</div>`
     : `<div class="card">
-        <p>Bring in your Instagram saved posts and they'll be sorted into Recipes, Fitness, Claude & AI, Look into and Other.</p>
+        <p>Bring in your Instagram saved posts and the recipes, workouts and home organising ones are kept and sorted. Everything else is left out.</p>
         <button class="full dark" data-action="saves-import">Import saved_posts.json</button>
       </div>`}
     <details class="card drop-card">
