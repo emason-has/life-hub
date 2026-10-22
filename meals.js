@@ -227,8 +227,11 @@ function shopState(monday) {
 
 
 // ---------- 4. Screens ----------
+let lastMealsTab = "plan";   // so Back on a recipe returns to the plan or the recipe list
+
 function mealsScreen(sub = "plan", id) {
   if (sub === "add") return recipeForm(id);
+  lastMealsTab = sub;
   const tabs = [["plan", "Plan"], ["shop", "Shop"], ["recipes", "Recipes"]];
   const draw = { shop: shopScreen, recipes: recipesScreen }[sub] || planScreen;
   return `
@@ -260,10 +263,13 @@ function planScreen() {
         <p class="label" style="margin:0 0 4px">${niceDate(key)}${key === todayKey() ? " · Today" : ""}</p>
         ${MEAL_SLOTS.map((s) => {
           const r = findRecipe(plan[`${day}-${s.id}`]);
-          return `<a class="slot" href="#pick/${monday}/${day}-${s.id}">
-              <span class="muted small">${s.label}</span>
-              <span class="${r ? "" : "muted"}">${r ? esc(r.name) : "Add"}</span>
-            </a>`;
+          const pick = `#pick/${monday}/${day}-${s.id}`;
+          // A planned meal opens its recipe. The round button swaps it for another.
+          if (!r) return `<a class="slot" href="${pick}"><span class="muted small">${s.label}</span><span class="muted">Add</span></a>`;
+          return `<div class="slot">
+              <a class="slot-link" href="#recipe/${r.id}"><span class="muted small">${s.label}</span><span>${esc(r.name)}</span></a>
+              <a class="circ sm" href="${pick}" aria-label="Swap ${s.label.toLowerCase()}">${icon("edit")}</a>
+            </div>`;
         }).join("")}
       </div>`;
   }).join("");
@@ -381,10 +387,10 @@ function recipesScreen() {
 
 function recipeScreen(id) {
   const r = findRecipe(id);
-  if (!r) return `${topBar(backBtn("#meals/recipes"))}<p>Recipe not found.</p>`;
+  if (!r) return `${topBar(backBtn(`#meals/${lastMealsTab}`))}<p>Recipe not found.</p>`;
   const flags = foodFlags(r);
   return `
-    ${topBar(backBtn("#meals/recipes"), `<a class="circ" href="#meals/add/${r.id}" aria-label="Edit">${icon("edit")}</a>
+    ${topBar(backBtn(`#meals/${lastMealsTab}`), `<a class="circ" href="#meals/add/${r.id}" aria-label="Edit">${icon("edit")}</a>
       <button class="circ" data-action="recipe-delete" data-id="${r.id}" aria-label="Delete">${icon("x")}</button>`)}
     <h1 class="head" style="font-size:28px"><b>${esc(r.name)}</b></h1>
     <p class="sub">${r.meal} · serves ${r.serves || 1}${r.protein ? ` · about ${r.protein}g protein per serve` : ""}</p>

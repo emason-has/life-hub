@@ -195,6 +195,8 @@ input[type="date"] { min-height: 48px; }
 .store-chip { min-height: 52px; min-width: 88px; font-size: 13px; padding: 0 10px; border-radius: var(--r-md); }
 .slot { display: flex; justify-content: space-between; align-items: center; gap: 10px; min-height: 48px; padding: 10px 14px; margin: 6px 0; border-radius: var(--r-md); background: var(--card-solid); color: var(--ink); text-decoration: none; font-weight: 500; }
 .slot span:last-child { text-align: right; }
+.slot-link { flex: 1; min-width: 0; display: flex; justify-content: space-between; align-items: center; gap: 10px; color: var(--ink); text-decoration: none; }
+.slot .circ.sm { flex: none; width: 34px; height: 34px; min-height: 34px; }
 .list { list-style: none; padding: 0; margin: 0; }
 .list li { padding: 10px 0; border-bottom: 1px solid var(--line); }
 .list li:last-child { border-bottom: none; }
