@@ -3,10 +3,10 @@
 // Sections:
 //   1. Saving and loading your data (stays on your phone)
 //   2. Date helpers
-//   3. Your programme: weeks, phases, habits, wake-up time
-//   4. Ticks
-//   5. Line chart (used by the Fitness charts)
-//   6. Screens (Home, Body measurements, Settings, Routines)
+//   3. Your programme (week number, Tiimo wake-up time)
+//   4. Ticks (kept for older saved data)
+//   5. Line chart (used by the Train charts)
+//   6. Screens (icons, Home widgets, More, Body, Settings, Tiimo)
 //   7. Buttons: what happens when you tap things
 //   8. Backup: export and import
 //   9. Start the app
@@ -113,28 +113,9 @@ function weekNumber(key = todayKey()) {
   return Math.max(1, Math.floor(daysBetween(data.settings.startDate, key) / 7) + 1);
 }
 
-// Phase index 0-3 based on the week number.
-function phaseIndex(key = todayKey()) {
-  const w = weekNumber(key);
-  if (w <= 2) return 0;
-  if (w <= 4) return 1;
-  if (w <= 6) return 2;
-  return 3;
-}
-
-// This week's wake-up target: 6:45, then 6:30, then 6:15 and stays there.
+// This week's wake-up target for Tiimo: 6:45, then 6:30, then 6:15 and stays there.
 function wakeTarget(key = todayKey()) {
   return WAKE_TIMES[Math.min(weekNumber(key) - 1, WAKE_TIMES.length - 1)];
-}
-
-// The habits that apply on a given day: all habits from phase 1 up to
-// the current phase, keeping only the ones meant for that weekday.
-function habitsFor(key) {
-  const day = dayName(key);
-  return PHASES.slice(0, phaseIndex(key) + 1)
-    .flatMap((p) => p.habits)
-    .filter((h) => !h.days || h.days.includes(day))
-    .map((h) => h.id === "woke-on-time" ? { ...h, label: `Woke up by ${wakeTarget(key)}am` } : h);
 }
 
 
@@ -167,104 +148,164 @@ function esc(text) {
   return String(text ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 }
 
-function tickHTML(key, item, extra = "") {
-  const on = isTicked(key, item.id);
-  return `<button class="tick ${on ? "on" : ""}" data-action="tick" data-date="${key}" data-id="${item.id}" aria-pressed="${on}">
-      <span class="box"></span><span class="label">${esc(item.label)}</span>${extra}
-    </button>`;
+// Simple line icons (drawn as SVG so they stay crisp at any size).
+const ICONS = {
+  home: '<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/>',
+  dumbbell: '<path d="M6 7v10M18 7v10M3 10v4M21 10v4M6 12h12"/>',
+  food: '<path d="M7 3v8a2 2 0 0 0 2 2v8M5 3v5M9 3v5M17 21V3c-2 1-3 4-3 7h3"/>',
+  more: '<circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/>',
+  back: '<path d="M15 6l-6 6 6 6"/>',
+  chev: '<path d="M9 6l6 6-6 6"/>',
+  down: '<path d="M6 9l6 6 6-6"/>',
+  up: '<path d="M6 15l6-6 6 6"/>',
+  arrow: '<path d="M7 17L17 7M9 7h8v8"/>',
+  search: '<circle cx="11" cy="11" r="6"/><path d="M20 20l-4-4"/>',
+  check: '<path d="M5 12l5 5 9-10"/>',
+  x: '<path d="M6 6l12 12M18 6L6 18"/>',
+  sponge: '<rect x="4" y="8" width="16" height="10" rx="3"/><path d="M8 8V6M12 8V5M16 8V6"/>',
+  timer: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6"/>',
+  house: '<path d="M4 10l8-6 8 6v10H4z"/><path d="M10 20v-6h4v6"/>',
+  leaf: '<path d="M5 19c0-9 6-14 15-14 0 9-5 15-14 15M5 19l7-7"/>',
+  run: '<circle cx="13" cy="4" r="2"/><path d="M10 21l2-6-3-3 2-4 3 3h3M8 12l-2 3"/>',
+  wave: '<path d="M2 15c2.5 0 2.5-2 5-2s2.5 2 5 2 2.5-2 5-2 2.5 2 5 2M2 19c2.5 0 2.5-2 5-2s2.5 2 5 2 2.5-2 5-2 2.5 2 5 2M7 11c0-4 3-7 7-7"/>',
+  lotus: '<path d="M12 20c-4 0-8-2-9-6 3 0 6 1 9 4 3-3 6-4 9-4-1 4-5 6-9 6zM12 18c-2-3-2-8 0-12 2 4 2 9 0 12z"/>',
+  posture: '<circle cx="12" cy="4" r="2"/><path d="M12 7v7M8 10l4-1 4 1M10 21l2-7 2 7"/>',
+  moon: '<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>',
+  heart: '<path d="M12 21s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.5-7 10-7 10z"/>',
+  cart: '<path d="M3 4h2l2 11h11l2-8H6"/><circle cx="9" cy="19" r="1.4"/><circle cx="17" cy="19" r="1.4"/>',
+  calendar: '<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+  palm: '<path d="M12 22c0-6 1-10 3-13M15 9c-2-3-6-3-9-1 3 0 5 1 7 3M15 9c1-3 5-4 7-2-3 0-5 1-6 3M15 9c2-1 5 0 6 3"/>',
+  chart: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
+  bell: '<path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4zM10 21h4"/>',
+  drag: '<circle cx="9" cy="7" r="1.2"/><circle cx="15" cy="7" r="1.2"/><circle cx="9" cy="12" r="1.2"/><circle cx="15" cy="12" r="1.2"/><circle cx="9" cy="17" r="1.2"/><circle cx="15" cy="17" r="1.2"/>',
+  play: '<path d="M7 5l12 7-12 7z"/>',
+  save: '<path d="M5 4h11l3 3v13H5zM8 4v5h8M8 20v-6h8v6"/>',
+  star: '<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/>',
+  edit: '<path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4"/>'
+};
+function icon(name, cls = "") {
+  return `<svg class="i ${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name] || ICONS.more}</svg>`;
+}
+
+// A big two-line headline, like "Let's make / today count".
+function headline(light, bold) {
+  return `<h1 class="head">${light}<b>${bold}</b></h1>`;
+}
+
+// The top bar used on every main screen: a back button or a caption, and round buttons.
+function topBar(left, right = "") {
+  return `<div class="topbar">${left}<div class="row" style="gap:8px">${right}</div></div>`;
+}
+function backBtn(href, label = "Back") {
+  return `<a class="circ" href="${href}" aria-label="${label}">${icon("back")}</a>`;
 }
 
 let feelingEnergy = null;
+let homeEdit = false;      // Home edit mode (remove, reorder, add widgets)
+let quickOpen = false;     // the + menu
 
 const SCREENS = {
   home: homeScreen,
-  routines: routinesScreen,
-  settings: settingsScreen
+  more: moreScreen,
+  settings: settingsScreen,
+  tiimo: tiimoScreen
 };
 
 function render() {
   const [screen, ...rest] = (location.hash.slice(1) || "home").split("/");
   const draw = SCREENS[screen] || homeScreen;
-  document.getElementById("app").innerHTML = draw(...rest);
-  // Screens that live under another tab (a workout is part of Fitness, etc.)
+  document.getElementById("app").innerHTML = draw(...rest) + (quickOpen ? quickAddHTML() : "");
+  // Screens that live under another tab (a workout is part of Train, etc.)
   const parentTab = { session: "fitness", tpl: "fitness", ex: "fitness", pickex: "fitness", train: "fitness", wlog: "fitness",
-    recipe: "meals", pick: "meals", settings: "home", health: "home" };
+    recipe: "meals", pick: "meals", settings: "more", health: "more", house: "more", tiimo: "more" };
   const tab = parentTab[screen] || (SCREENS[screen] ? screen : "home");
   document.querySelectorAll(".tabbar a").forEach((a) => a.classList.toggle("on", a.dataset.tab === tab));
+  // Keep the chosen chip in view when a chip row is wider than the screen.
+  document.querySelectorAll(".tabs-chips").forEach((row) => {
+    const on = row.querySelector(".on");
+    if (on) row.scrollLeft = on.offsetLeft - (row.clientWidth - on.offsetWidth) / 2;
+  });
 }
 
 // ----- Home -----
+// Home is made of widgets you choose. Each widget is a small function that returns a card.
+const WIDGETS = {
+  next:   { name: "Up next", icon: "dumbbell", html: () => upNextHTML() },
+  week:   { name: "This week", icon: "chart", html: () => weekWidgetHTML() },
+  status: { name: "On track check", icon: "check", html: () => statusHomeHTML() },
+  clean:  { name: "Cleaning due", icon: "sponge", html: () => cleaningHomeHTML() },
+  meals:  { name: "Today's meals", icon: "food", html: () => todaysMealsHTML() },
+  shop:   { name: "Shopping list", icon: "cart", html: () => shoppingWidgetHTML() },
+  bali:   { name: "Bali countdown", icon: "palm", html: () => baliHTML() },
+  health: { name: "Steps & Health", icon: "heart", html: () => healthHomeHTML() }
+};
+const DEFAULT_HOME = ["next", "week", "status", "clean", "meals"];
+function homeWidgets() {
+  return (data.settings.home || DEFAULT_HOME).filter((id) => WIDGETS[id]);
+}
+
 function homeScreen() {
-  const today = todayKey();
   const hour = new Date().getHours();
   const hello = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
-  const phase = PHASES[phaseIndex()];
-  const stats = weekScore(mondayOf(today));
-  const streak = dayStreak();
-  const weekWins = weekWinStreak();
-
+  const d = fromKey(todayKey());
+  const longDate = `${d.toLocaleDateString("en-AU", { weekday: "long" })} ${d.getDate()} ${MONTHS[d.getMonth()]}`;
+  const ids = homeWidgets();
+  const hidden = Object.keys(WIDGETS).filter((id) => !ids.includes(id));
   return `
-    <div class="row between">
-      <h1>${hello} 🌊</h1>
-      <a class="btn secondary" href="#settings" aria-label="Settings">⚙️</a>
-    </div>
-    <p class="sub">${niceDate(today)} · Week ${weekNumber()} of your plan</p>
-
-    ${backupReminderHTML()}
-
-    ${baliHTML()}
-
-    ${fit().active ? `<a class="btn full" href="#train" style="margin-bottom:14px">▶️ Back to your workout</a>` : ""}
-
-    ${todayFitnessHTML()}
-
-    ${statusHomeHTML()}
-
-    <div class="card">
-      <div class="row between"><h2>Today's habits</h2><span class="pill">Phase ${phase.num}</span></div>
-      ${habitsFor(today).map((h) => tickHTML(today, h)).join("")}
-    </div>
-
-    ${routinesSummaryHTML()}
-
-    ${todaysMealsHTML()}
-
-    ${focusHomeHTML()}
-
-    ${healthHomeHTML()}
-
-    <div class="card soft">
-      <div class="row between">
-        <h2>This week</h2>
-        ${stats.win ? `<span class="pill win">Week won! 🎉</span>` : `<span class="pill">${WEEK_SUGGESTIONS[stats.mode].label} week</span>`}
-      </div>
-      <p><strong>${stats.summary}</strong></p>
-      <p>🔥 ${streak}-day streak · 🏆 ${weekWins} week${weekWins === 1 ? "" : "s"} won in a row</p>
-      ${needsComeback() ? `<p class="small">Never miss twice: anything small today keeps your streak going 💛</p>` : ""}
-    </div>
-
-    <div class="card">
-      <h2>Current phase</h2>
-      <p><strong>${phase.weeks}:</strong> ${esc(phase.name)}</p>
-      <p class="muted">Wake-up target this week: <strong>${wakeTarget()}am</strong></p>
-    </div>
-
-    ${progressRemindersHTML()}
-
-    ${cleaningHomeHTML()}
+    ${topBar(`<div class="hi">${longDate}<b>${hello}</b></div>`,
+      `<button class="circ dark" data-action="quick-open" aria-label="Add">${icon("plus")}</button>
+       <a class="circ" href="#settings" aria-label="Settings">${icon("gear")}</a>`)}
+    ${homeEdit ? headline("Edit", "your widgets") : headline("Let's make", "today count")}
+    ${homeEdit ? "" : backupReminderHTML()}
+    ${fit().active && !homeEdit ? `<a class="btn full dark" href="#train" style="margin-bottom:12px">${icon("play")} Back to your workout</a>` : ""}
+    ${ids.map((id, i) => homeEdit ? `<div class="w-edit">
+        <div class="w-edit-bar"><span class="row" style="gap:8px">${icon(WIDGETS[id].icon)}<strong>${WIDGETS[id].name}</strong></span>
+          <span class="row" style="gap:4px">
+            <button class="circ sm" data-action="w-move" data-id="${id}" data-dir="-1" ${i === 0 ? "disabled" : ""} aria-label="Move up">${icon("up")}</button>
+            <button class="circ sm" data-action="w-move" data-id="${id}" data-dir="1" ${i === ids.length - 1 ? "disabled" : ""} aria-label="Move down">${icon("down")}</button>
+            <button class="circ sm warn" data-action="w-remove" data-id="${id}" aria-label="Remove">${icon("x")}</button>
+          </span></div>
+      </div>` : WIDGETS[id].html()).join("")}
+    ${homeEdit ? `${hidden.length ? `<p class="label">Add a widget</p><div class="card list-card">${hidden.map((id) =>
+        `<button class="li" data-action="w-add" data-id="${id}">${icon(WIDGETS[id].icon)}<span class="grow">${WIDGETS[id].name}</span>${icon("plus", "accent")}</button>`).join("")}</div>` : ""}
+      <button class="full dark" data-action="home-edit">Done</button>`
+      : `<button class="link-btn" data-action="home-edit">${icon("edit")} Edit Home</button>`}
   `;
 }
 
-function routinesSummaryHTML() {
-  const today = todayKey();
-  const part = (name, items) => {
-    const done = doneCount(today, items);
-    return `<span class="pill ${done === items.length ? "win" : ""}">${name} ${done}/${items.length}</span>`;
-  };
-  return `<a class="card" href="#routines" style="display:block;text-decoration:none;color:inherit">
-      <div class="row between"><h2>Routines 🌅</h2><span class="muted small">Open ›</span></div>
-      <div class="row wrap" style="gap:8px">${part("Morning", MORNING)} ${part("Habits", DAILY_HABITS)} ${part("Evening", EVENING)}</div>
-    </a>`;
+// The dark summary card: this week's workouts, steps and Bali.
+function weekWidgetHTML() {
+  const monday = mondayOf(todayKey());
+  const s = weekScore(monday);
+  const target = s.mode === "busy" ? 2 : s.mode === "light" ? 2 : fit().targets.strength;
+  const doneN = s.mode === "light" ? s.total : s.strength;
+  const pct = Math.min(1, doneN / Math.max(1, target));
+  const C = 2 * Math.PI * 32;
+  const h = (data.health || {})[todayKey()];
+  const bali = daysBetween(todayKey(), data.settings.baliDate);
+  return `<div class="dark-card">
+      <svg viewBox="0 0 80 80" class="ring" aria-hidden="true"><circle cx="40" cy="40" r="32" class="ring-bg"/><circle cx="40" cy="40" r="32" class="ring-fg" stroke-dasharray="${pct * C} ${C}" transform="rotate(-90 40 40)"/>
+        <text x="40" y="46" text-anchor="middle">${doneN}/${target}</text></svg>
+      <div class="stats">
+        <div class="lbl">${WEEK_SUGGESTIONS[s.mode].label} week${s.win ? " · won" : ""}</div>
+        <div><span>${s.mode === "light" ? "Sessions" : "Workouts"}</span><b>${doneN} of ${target}</b></div>
+        <div><span>Steps today</span><b>${h && h.steps ? Number(h.steps).toLocaleString() : "-"}</b></div>
+        <div><span>Bali</span><b>${bali > 0 ? `${bali} days` : "Now!"}</b></div>
+      </div>
+    </div>`;
+}
+
+function shoppingWidgetHTML() {
+  const monday = planMonday();
+  const state = shopState(monday);
+  const items = shoppingItems(monday).filter((i) => !state.checked[i.key]);
+  return `<details class="card drop-card">
+      <summary class="li">${icon("cart", "tile")}<span class="grow">Shopping list</span><span class="num">${items.length}</span>${icon("down", "chev")}</summary>
+      <div class="drop-body small">${items.slice(0, 8).map((i) => esc(i.text)).join("<br>") || "All done"}${items.length > 8 ? `<br><span class="muted">+${items.length - 8} more</span>` : ""}
+        <div class="row" style="margin-top:10px;gap:8px"><a class="btn sm" href="#meals/shop">Open</a><button class="sm ghost" data-action="copy-shop">Copy as text</button></div></div>
+    </details>`;
 }
 
 // The Bali countdown, with the trip plan underneath.
@@ -273,22 +314,16 @@ function baliHTML() {
   const days = daysBetween(today, data.settings.baliDate);
   const end = BALI_TRIP[BALI_TRIP.length - 1].to;
   const stay = BALI_TRIP.find((s) => today >= s.from && today < s.to);
-  const plan = BALI_TRIP.map((s) => `${s.place}: ${niceDate(s.from).slice(4)} to ${niceDate(s.to).slice(4)}`).join(" · ");
-  let big = "🌴", line;
-  if (days > 0) { big = days; line = `days to go (${Math.ceil(days / 7)} weeks)`; }
-  else if (stay) line = `You're in ${stay.place}! Enjoy every second.`;
-  else if (today <= end) line = "You're in Bali! Enjoy every second.";
-  else line = "Hope Bali was amazing!";
-  return `<div class="card ocean">
-      <div class="row between">
-        <div>
-          <div class="muted">Bali countdown</div>
-          <div class="big-number">${big}</div>
-          <div>${line}</div>
-        </div>
-        <div style="font-size:54px">🏝️</div>
-      </div>
-      <p class="small" style="margin:10px 0 0;opacity:0.9">🌴 ${plan}</p>
+  const plan = BALI_TRIP.map((s) => `${s.place} ${niceDate(s.from).slice(4)} to ${niceDate(s.to).slice(4)}`).join(" · ");
+  let big = "", line;
+  if (days > 0) { big = days; line = `days to Bali`; }
+  else if (stay) line = `You're in ${stay.place}. Enjoy every second.`;
+  else if (today <= end) line = "You're in Bali. Enjoy every second.";
+  else line = "Hope Bali was amazing.";
+  return `<div class="card bali-card">
+      <div><div class="label" style="margin:0">${icon("palm")} Bali</div>
+        ${big ? `<div class="big-number">${big}</div>` : ""}<div class="small">${line}</div></div>
+      <p class="small muted" style="margin:8px 0 0">${plan}</p>
     </div>`;
 }
 
@@ -296,26 +331,48 @@ function backupReminderHTML() {
   const last = data.settings.lastBackup;
   const since = daysBetween(last || data.settings.createdOn, todayKey());
   if (since < (last ? 30 : 7)) return "";
-  return `<div class="card warm">
-      <h3>Time for a quick backup 💾</h3>
-      <p class="small">${last ? `Your last backup was ${since} days ago.` : "You haven't made a backup yet."} It takes 10 seconds and keeps your progress safe.</p>
-      <a class="btn full" href="#settings">Back up now</a>
+  return `<div class="card notice">
+      <div class="grow"><strong>Time for a backup</strong><div class="small muted">${last ? `Last one ${since} days ago.` : "You haven't made one yet."}</div></div>
+      <a class="btn sm dark" href="#settings">Back up</a>
     </div>`;
 }
 
-function progressRemindersHTML() {
+// The + menu: quick ways to log or add something.
+function quickAddHTML() {
   const today = todayKey();
-  const lastM = data.measurements.map((m) => m.date).sort().pop();
-  const lastP = data.photos.slice().sort().pop();
-  const notes = [];
-  if (!lastM || daysBetween(lastM, today) >= 14) notes.push("📏 Measurements are due (waist and hips).");
-  if (!lastP || daysBetween(lastP, today) >= 30) notes.push("📸 Monthly progress photo time.");
-  if (!notes.length) return "";
-  return `<div class="card">
-      <h2>Little check-ins</h2>
-      ${notes.map((n) => `<p>${n}</p>`).join("")}
-      <a class="btn secondary full" href="#fitness/progress">Open progress</a>
+  const items = [
+    ["dumbbell", "Log a session today", `#session/new/${today}`],
+    ["calendar", "Plan my week", "#fitness/plan"],
+    ["heart", "Paste from Health", null, "health-paste"],
+    ["cart", "Add to shopping list", "#meals/shop"],
+    ["sponge", "Add a cleaning job", "#house/edit"]
+  ];
+  return `<div class="overlay" data-action="quick-close"></div>
+    <div class="sheet">
+      <div class="grab"></div>
+      ${items.map(([ic, label, href, action]) => href
+        ? `<a class="li" href="${href}" data-action="quick-close">${icon(ic, "tile")}<span class="grow">${label}</span>${icon("chev", "chev")}</a>`
+        : `<button class="li" data-action="${action}">${icon(ic, "tile")}<span class="grow">${label}</span>${icon("chev", "chev")}</button>`).join("")}
     </div>`;
+}
+
+// ----- More -----
+function moreScreen() {
+  const due = dueChores().length;
+  const row = (href, ic, label, meta = "") => `<a class="li" href="${href}">${icon(ic, "tile")}<span class="grow">${label}</span>${meta ? `<span class="meta">${meta}</span>` : ""}${icon("chev", "chev")}</a>`;
+  return `
+    ${headline("Everything", "else")}
+    <div class="card list-card">
+      ${row("#house", "sponge", "House", due ? `${due} due` : "All good")}
+      ${row("#fitness/progress/body", "chart", "Body & measurements")}
+      ${row("#health", "heart", "Apple Health")}
+      ${row("#tiimo", "bell", "Tiimo reminders")}
+    </div>
+    <div class="card list-card">
+      ${row("#settings", "gear", "Settings & backup")}
+      <button class="li" data-action="home-edit-go">${icon("edit", "tile")}<span class="grow">Edit Home widgets</span>${icon("chev", "chev")}</button>
+    </div>
+  `;
 }
 
 // ----- Line chart -----
@@ -352,7 +409,7 @@ function measurementsHTML() {
     return diff ? ` <span class="small muted">(${diff > 0 ? "+" : ""}${diff})</span>` : "";
   };
   return `<div class="card">
-    <h2>Measurements 📏</h2>
+    <h2>Measurements</h2>
     <p class="muted small">Every 2 weeks. Next: ${daysBetween(todayKey(), next) <= 0 ? "<strong>due now</strong>" : niceDate(next)}</p>
     <div class="row">
       <label class="field grow">Waist (cm)<input id="m-waist" type="number" inputmode="decimal" step="0.1"></label>
@@ -364,7 +421,7 @@ function measurementsHTML() {
       <li class="row between">
         <span><strong>${niceDate(m.date)}</strong><br>
           <span class="small">Waist ${m.waist ?? "-"}${change(m, "waist")} · Hips ${m.hips ?? "-"}${change(m, "hips")}${m.weight ? ` · ${m.weight}kg${change(m, "weight")}` : ""}</span></span>
-        <button class="ghost" data-action="delete" data-list="measurements" data-date="${m.date}" aria-label="Delete">✕</button>
+        <button class="ghost" data-action="delete" data-list="measurements" data-date="${m.date}" aria-label="Delete">${icon("x")}</button>
       </li>`).join("")}</ul>` : ""}
   </div>`;
 }
@@ -373,17 +430,17 @@ function photoHTML() {
   const last = data.photos.slice().sort().pop();
   const tookToday = last === todayKey();
   return `<div class="card">
-    <h2>Progress photo 📸</h2>
+    <h2>Progress photo</h2>
     <p class="muted small">Once a month. Photos stay in your Photos app; this just keeps track of the date.</p>
     <p>${last ? `Last photo: <strong>${niceDate(last)}</strong>. Next around ${niceDate(addDays(last, 30))}.` : "No photo logged yet."}</p>
-    <button class="full ${tookToday ? "secondary" : ""}" data-action="photo">${tookToday ? "✓ Logged today" : "I took my photo today"}</button>
+    <button class="full ${tookToday ? "secondary" : ""}" data-action="photo">${tookToday ? "Logged today" : "I took my photo today"}</button>
   </div>`;
 }
 
 function feelingsHTML() {
   const recent = data.feelings.slice().sort((a, b) => b.date.localeCompare(a.date)).slice(0, 6);
   return `<div class="card">
-    <h2>How I feel 💛</h2>
+    <h2>How I feel</h2>
     <p class="small muted">Energy today (1 = low, 5 = great)</p>
     <div class="energy">
       ${[1, 2, 3, 4, 5].map((n) => `<button class="${feelingEnergy === n ? "on" : ""}" data-action="energy" data-n="${n}">${n}</button>`).join("")}
@@ -393,7 +450,7 @@ function feelingsHTML() {
     ${recent.length ? `<ul class="list" style="margin-top:10px">${recent.map((f) => `
       <li class="row between">
         <span><strong>${niceDate(f.date)}</strong> · Energy ${f.energy || "-"}/5${f.notes ? `<br><span class="small">${esc(f.notes)}</span>` : ""}</span>
-        <button class="ghost" data-action="delete" data-list="feelings" data-date="${f.date}" aria-label="Delete">✕</button>
+        <button class="ghost" data-action="delete" data-list="feelings" data-date="${f.date}" aria-label="Delete">${icon("x")}</button>
       </li>`).join("")}</ul>` : ""}
   </div>`;
 }
@@ -402,144 +459,36 @@ function feelingsHTML() {
 function settingsScreen() {
   const s = data.settings;
   return `
-    <a class="back" href="#home">‹ Home</a>
-    <h1>Settings ⚙️</h1>
-    <p class="sub">Your data lives only on this phone.</p>
+    ${topBar(backBtn("#more"))}
+    ${headline("Settings", "& backup")}
 
     <div class="card">
-      <h2>Dates</h2>
-      <label class="field">Bali trip date<input type="date" data-setting="baliDate" value="${s.baliDate}"></label>
-      <label class="field">Programme start date (week 1)<input type="date" data-setting="startDate" value="${s.startDate}"></label>
-      <label class="field">Daily step goal<input type="number" inputmode="numeric" data-setting="stepGoal" value="${s.stepGoal || 8000}"></label>
-      <p class="small muted">Your phase and wake-up target are worked out from the start date.</p>
+      <p class="label" style="margin-top:0">Backup</p>
+      <p class="small">${s.lastBackup ? `Last backup: <strong>${niceDate(s.lastBackup)}</strong>.` : "No backup yet."} Once a month is plenty. Home reminds you.</p>
+      <div class="row" style="gap:8px">
+        <button class="grow dark" data-action="export">${icon("save")} Export</button>
+        <button class="grow" data-action="import">Import</button>
+      </div>
+      <input type="file" id="import-file" accept=".json,application/json" hidden>
+      <p class="small muted" style="margin:10px 0 0">Export, then "Save to Files" (iCloud Drive is a good spot). To restore, tap Import and pick that file.</p>
     </div>
 
     <div class="card">
-      <h2>Backup 💾</h2>
-      <p class="small">${s.lastBackup ? `Last backup: <strong>${niceDate(s.lastBackup)}</strong>` : "No backup yet."} Aim for once a month. I'll remind you on the Home screen.</p>
-      <button class="full" data-action="export" style="margin-bottom:10px">Export backup</button>
-      <button class="full secondary" data-action="import">Import backup</button>
-      <input type="file" id="import-file" accept=".json,application/json" hidden>
-      <p class="small muted" style="margin-top:10px">Export saves a file of all your data. On iPhone, choose "Save to Files" (iCloud Drive is a good spot). To restore, tap Import and pick that file.</p>
+      <p class="label" style="margin-top:0">Dates</p>
+      <label class="field">Bali trip date<input type="date" data-setting="baliDate" value="${s.baliDate}"></label>
+      <label class="field">Programme start (for Tiimo wake-up times)<input type="date" data-setting="startDate" value="${s.startDate}"></label>
+      <label class="field" style="margin-bottom:0">Daily step goal<input type="number" inputmode="numeric" data-setting="stepGoal" value="${s.stepGoal || 8000}"></label>
     </div>
 
     ${targetsSettingsHTML()}
-
-    <a class="btn secondary full" href="#health" style="margin-bottom:14px">❤️ Apple Health setup</a>
-
-    <div class="card soft">
-      <h3>Coming soon</h3>
-      <p class="small">The Saves tab arrives in Stage 5.</p>
-    </div>
   `;
-}
-
-
-// ----- Routines (Stage 2) -----
-// Swaps "{wake}" in a label for this week's wake-up time.
-function withWake(text, key = todayKey()) {
-  return text.replace("{wake}", wakeTarget(key) + "am");
-}
-
-function checklistHTML(key, items) {
-  return items.map((i) => tickHTML(key, { ...i, label: withWake(i.label, key) })).join("");
-}
-
-function doneCount(key, items) {
-  return items.filter((i) => isTicked(key, i.id)).length;
-}
-
-// Finishing a whole checklist also ticks the matching habit.
-function autoTicks(key) {
-  if (MORNING.every((i) => isTicked(key, i.id))) setTick(key, "morning-routine", true);
-  if (POSTURE_HOME.every((i) => isTicked(key, i.id))) setTick(key, "posture-routine", true);
-}
-
-function routinesScreen(sub = "today") {
-  const tabs = [["today", "Today"], ["posture", "Posture"], ["sunday", "Sunday"], ["tiimo", "Tiimo"]];
-  const draw = { posture: postureScreen, sunday: sundayScreen, tiimo: tiimoScreen }[sub] || routinesToday;
-  return `
-    <h1>Routines 🌅</h1>
-    <p class="sub">Small steps, every day. Wake-up target: ${wakeTarget()}am</p>
-    <nav class="subtabs">
-      ${tabs.map(([id, label]) => `<a href="#routines/${id}" class="${(sub || "today") === id ? "on" : ""}">${label}</a>`).join("")}
-    </nav>
-    ${draw()}`;
-}
-
-function routinesToday() {
-  const today = todayKey();
-  const card = (title, emoji, items, doneText) => {
-    const done = doneCount(today, items);
-    return `<div class="card">
-        <div class="row between"><h2>${title} ${emoji}</h2><span class="pill ${done === items.length ? "win" : ""}">${done}/${items.length}</span></div>
-        ${checklistHTML(today, items)}
-        ${done === items.length ? `<p class="saved-flag" style="margin-top:6px">${doneText}</p>` : ""}
-      </div>`;
-  };
-  return `
-    ${wakePlanHTML()}
-    ${card("Morning", "☀️", MORNING, "Morning done! Great start ☀️")}
-    ${card("Daily habits", "🌿", DAILY_HABITS, "Every habit ticked today. Amazing!")}
-    ${card("Evening", "🌙", EVENING, "All set for tomorrow. Sleep well 🌙")}
-    ${dayName(today) === "Sun" ? `<a class="btn full" href="#routines/sunday">Open Sunday reset 🧺</a>` : ""}
-  `;
-}
-
-// Shows 6:45 > 6:30 > 6:15 with this week highlighted.
-function wakePlanHTML() {
-  const now = wakeTarget();
-  const last = wakeTarget(addDays(todayKey(), -7));
-  const changed = now !== last && weekNumber() > 1;
-  const next = wakeTarget(addDays(todayKey(), 7));
-  return `<div class="card soft">
-      <h2>Wake-up plan ⏰</h2>
-      <p class="small">Stepping 15 min earlier each week, for an 8am start with a 45-60 min commute.</p>
-      <div class="row" style="gap:8px;margin:10px 0">
-        ${WAKE_TIMES.map((t) => `<span class="pill ${t === now ? "win" : ""}" style="flex:1;text-align:center;padding:8px">${t}</span>`).join("")}
-      </div>
-      <p><strong>This week: ${now}am.</strong> ${next !== now ? `Next week: ${next}am.` : "You've reached your goal time. Nice!"}</p>
-      ${changed ? `<p class="small">New time this week! <a href="#routines/tiimo">Update your wake-up reminder in Tiimo</a>.</p>` : ""}
-    </div>`;
-}
-
-function postureScreen() {
-  const today = todayKey();
-  return `
-    <div class="card">
-      <div class="row between"><h2>5 min home routine</h2><span class="pill">${doneCount(today, POSTURE_HOME)}/${POSTURE_HOME.length}</span></div>
-      <p class="muted small">For shoulders that roll forward at a desk. Gentle is fine.</p>
-      ${POSTURE_HOME.map((p) => `
-        ${tickHTML(today, { id: p.id, label: `${p.name} (${p.time})` })}
-        <p class="small muted" style="margin:0 4px 12px">${esc(p.how)}</p>`).join("")}
-      <div class="note">💛 ${UPPER_BODY_NOTE}</div>
-    </div>
-
-    <div class="card">
-      <div class="row between"><h2>Work check-ins</h2><span class="pill">${doneCount(today, POSTURE_WORK)}/${POSTURE_WORK.length}</span></div>
-      <p class="muted small">Tiny resets tied to things you already do.</p>
-      ${POSTURE_WORK.map((p) => `
-        ${tickHTML(today, { id: p.id, label: p.when })}
-        <p class="small muted" style="margin:0 4px 12px">${esc(p.what)}</p>`).join("")}
-    </div>`;
-}
-
-function sundayScreen() {
-  const today = todayKey();
-  const sunday = dayName(today) === "Sun" ? today : addDays(mondayOf(today), 6);
-  const items = [...SUNDAY_RESET, { id: "sun-prep", label: "Meal prep" }];
-  const done = doneCount(sunday, items);
-  return `
-    <div class="card">
-      <div class="row between"><h2>Sunday reset 🧺</h2><span class="pill ${done === items.length ? "win" : ""}">${done}/${items.length}</span></div>
-      <p class="muted small">${niceDate(sunday)} · About 10 minutes (plus meal prep). Put a couple of songs on.</p>
-      ${checklistHTML(sunday, items)}
-      ${done === items.length ? `<p class="saved-flag" style="margin-top:6px">Week sorted. Future you says thanks! 🎉</p>` : ""}
-    </div>`;
 }
 
 // The Tiimo list. Ticking "Added to Tiimo" is remembered (not daily).
 // For the wake-up reminder we remember the time, so it un-ticks when the time changes.
+function withWake(text, key = todayKey()) {
+  return text.replace("{wake}", wakeTarget(key) + "am");
+}
 function tiimoText(t) {
   return `${t.title}: ${withWake(t.time)} (${t.days})`;
 }
@@ -547,22 +496,22 @@ function tiimoText(t) {
 function tiimoScreen() {
   const now = wakeTarget() + "am";
   return `
-    <p class="muted">Tiimo does your reminders and visual schedule. Add each of these once, then tick it off here.</p>
+    ${topBar(backBtn("#more"))}
+    ${headline("Tiimo", "reminders")}
+    <p class="sub">Set these up in Tiimo once. Tap one when it's in.</p>
+    <div class="card list-card">
     ${TIIMO.map((t) => {
       const saved = data.tiimoAdded[t.id];
       const added = t.id === "t-wake" ? saved === now : !!saved;
       const outdated = t.id === "t-wake" && saved && saved !== now;
-      return `<div class="card">
-          <div class="row between"><h3>${esc(t.title)}</h3><span class="pill">${esc(withWake(t.time))}</span></div>
-          <p class="muted small">${esc(t.days)}</p>
-          ${outdated ? `<div class="note">Time changed! Update it in Tiimo from ${esc(saved)} to ${now}.</div>` : ""}
-          <button class="tick ${added ? "on" : ""}" data-action="tiimo" data-id="${t.id}" aria-pressed="${added}">
-            <span class="box"></span><span class="label">${added ? "Added to Tiimo" : "Tick when added to Tiimo"}</span>
-          </button>
-        </div>`;
+      return `<button class="li" data-action="tiimo" data-id="${t.id}">
+          <span class="circle-tick ${added ? "on" : ""}">${added ? icon("check") : ""}</span>
+          <span class="grow">${esc(t.title)}<span class="small muted block">${esc(t.days)}${outdated ? ` · update to ${now}` : ""}</span></span>
+          <span class="tag">${esc(withWake(t.time))}</span>
+        </button>`;
     }).join("")}
-    <button class="full secondary" data-action="copy-tiimo">📋 Copy list as text</button>
-    <p class="small muted" style="margin-top:10px">Want different times? Tell me and I'll change them, or edit the TIIMO list in data.js.</p>
+    </div>
+    <button class="full" data-action="copy-tiimo">Copy list as text</button>
   `;
 }
 
@@ -578,7 +527,7 @@ async function copyText(text) {
     document.execCommand("copy");
     box.remove();
   }
-  toast("Copied! Ready to paste 📋");
+  toast("Copied. Ready to paste");
 }
 
 
@@ -593,12 +542,25 @@ function toast(message) {
 function cheer() { return CHEERS[Math.floor(Math.random() * CHEERS.length)]; }
 
 const ACTIONS = {
-  tick({ date, id }) {
-    const on = !isTicked(date, id);
-    setTick(date, id, on);
-    if (on) autoTicks(date);
+  "quick-open"() { quickOpen = true; render(); },
+  "quick-close"(d, el) {
+    quickOpen = false;
+    if (el && el.getAttribute("href")) location.hash = el.getAttribute("href"); else render();
+  },
+
+  "home-edit"() { homeEdit = !homeEdit; window.scrollTo(0, 0); render(); },
+  "home-edit-go"() { homeEdit = true; location.hash = "#home"; render(); },
+  "w-move"({ id, dir }) {
+    const list = homeWidgets();
+    const i = list.indexOf(id), j = i + Number(dir);
+    if (j < 0 || j >= list.length) return;
+    [list[i], list[j]] = [list[j], list[i]];
+    data.settings.home = list;
+    saveData();
     render();
   },
+  "w-remove"({ id }) { data.settings.home = homeWidgets().filter((x) => x !== id); saveData(); render(); },
+  "w-add"({ id }) { data.settings.home = [...homeWidgets(), id]; saveData(); render(); },
 
   "save-measure"() {
     const num = (id) => { const v = parseFloat(document.getElementById(id).value); return isNaN(v) ? null : v; };
@@ -607,14 +569,14 @@ const ACTIONS = {
     data.measurements = data.measurements.filter((x) => x.date !== m.date);
     data.measurements.push(m);
     saveData();
-    toast("Measurements saved 📏");
+    toast("Measurements saved");
     render();
   },
 
   photo() {
     if (!data.photos.includes(todayKey())) data.photos.push(todayKey());
     saveData();
-    toast("Photo logged 📸");
+    toast("Photo logged");
     render();
   },
 
@@ -632,7 +594,7 @@ const ACTIONS = {
     data.feelings.push({ date: todayKey(), energy: feelingEnergy, notes });
     feelingEnergy = null;
     saveData();
-    toast("Saved. Thanks for checking in 💛");
+    toast("Saved. Thanks for checking in");
     render();
   },
 
@@ -670,12 +632,12 @@ document.addEventListener("change", (e) => {
   if (el.dataset.setting && el.value) {
     data.settings[el.dataset.setting] = el.value;
     saveData();
-    toast("Saved ✓");
+    toast("Saved");
   }
   if (el.id === "import-file" && el.files[0]) importBackup(el.files[0]);
 });
 
-window.addEventListener("hashchange", () => { window.scrollTo(0, 0); render(); });
+window.addEventListener("hashchange", () => { quickOpen = false; window.scrollTo(0, 0); render(); });
 
 
 // ---------- 8. Backup ----------
@@ -695,7 +657,7 @@ async function exportBackup() {
     }
     data.settings.lastBackup = todayKey();
     saveData();
-    toast("Backup ready 💾");
+    toast("Backup ready");
     render();
   } catch (err) {
     if (err.name !== "AbortError") toast("Couldn't make the backup. Try again?");
@@ -712,7 +674,7 @@ function importBackup(file) {
       localStorage.setItem(STORE_KEY, JSON.stringify(incoming));
       data = loadData();
       saveData();
-      toast("Backup restored ✓");
+      toast("Backup restored");
       render();
     } catch (e) {
       toast("That file doesn't look like a Life Hub backup.");

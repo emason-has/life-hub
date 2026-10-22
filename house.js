@@ -1,27 +1,26 @@
 // =====================================================================
-// HOUSE (Stage 4): cleaning tracker
+// HOUSE: cleaning that fits a busy week
 // Sections:
-//   1. Status helpers (green / amber / red)
-//   2. Thursday clean and the 15-minute blitz
-//   3. Screens (Today, All tasks, edit a task, the Home screen card)
-//   4. Buttons
-// The default tasks are in data.js (CLEANING_TASKS).
+//   1. Status helpers (when each job is due, and "Later")
+//   2. The 15-minute blitz
+//   3. Screens (due this week, all jobs, edit a job, the Home widget)
+//   4. Buttons and swiping
+// The default jobs are in data.js (CLEANING_TASKS).
 // =====================================================================
 
 
 // ---------- 1. Status helpers ----------
-// green = all good, amber = due soon (or today), red = overdue.
-// "new" = no date yet: never counted as overdue, so nothing starts red.
+// "new" = no date yet: never counted as overdue, so nothing starts late.
 function choreStatus(c) {
-  if (!c.lastDone) return { level: "new", text: "No date yet. Tap Done next time you do it", score: 0.5 };
+  if (!c.lastDone) return { level: "new", text: "No date yet", tag: "New", score: 0.5 };
   const since = daysBetween(c.lastDone, todayKey());
   const left = c.every - since;
-  const soon = Math.max(1, Math.round(c.every * 0.2));   // amber window: about the last 20%
+  const due = addDays(c.lastDone, c.every);
   const score = since / c.every;                          // bigger = more overdue
-  if (left < 0) return { level: "red", text: `${-left} day${left === -1 ? "" : "s"} overdue`, score };
-  if (left === 0) return { level: "amber", text: "Due today", score };
-  if (left <= soon) return { level: "amber", text: `Due in ${left} day${left === 1 ? "" : "s"}`, score };
-  return { level: "green", text: `All good · next ${niceDate(addDays(c.lastDone, c.every)).slice(4)}`, score };
+  if (left < 0) return { level: "late", text: `${-left} day${left === -1 ? "" : "s"} late`, tag: `${-left} day${left === -1 ? "" : "s"} late`, score, due };
+  if (left === 0) return { level: "soon", text: "Due today", tag: "Today", score, due };
+  if (left <= 6) return { level: "soon", text: `Due ${dayLong(due)}`, tag: dayName(due), score, due };
+  return { level: "ok", text: `Next ${niceDate(due).slice(4)}`, tag: niceDate(due).slice(4), score, due };
 }
 
 function freqLabel(days) {
@@ -32,24 +31,20 @@ function freqLabel(days) {
 function findChore(id) { return data.chores.find((c) => c.id === id); }
 function doneToday(c) { return c.lastDone === todayKey(); }
 
-// Due soon or overdue, most overdue first.
+// "Later" hides a job until next Monday. It keeps its due date.
+function isLater(c) { return !!c.laterUntil && c.laterUntil > todayKey(); }
+
+// Jobs due by Sunday (or already late), most overdue first. Later jobs are left out.
 function dueChores() {
+  const sunday = addDays(mondayOf(todayKey()), 6);
   return data.chores
-    .map((c) => ({ c, s: choreStatus(c) }))
-    .filter(({ s }) => s.level === "red" || s.level === "amber")
-    .sort((a, b) => b.s.score - a.s.score)
-    .map(({ c }) => c);
+    .filter((c) => !isLater(c) && c.lastDone && addDays(c.lastDone, c.every) <= sunday)
+    .sort((a, b) => choreStatus(b).score - choreStatus(a).score);
 }
 
 
-// ---------- 2. Thursday clean and the 15-minute blitz ----------
-function nextThursday() {
-  const today = todayKey();
-  const day = fromKey(today).getDay();          // Thursday = 4
-  return addDays(today, (4 - day + 7) % 7);
-}
-
-// Picks a few quick tasks (10 min or less each) that fit in 15 minutes, most due first.
+// ---------- 2. The 15-minute blitz ----------
+// Picks a few quick jobs (10 min or less each) that fit in 15 minutes, most due first.
 // "Pick again" moves the last picks to the back of the queue.
 let blitzIds = null;
 function pickBlitz(skip = []) {
@@ -68,84 +63,72 @@ function pickBlitz(skip = []) {
 
 
 // ---------- 3. Screens ----------
-function houseScreen(sub = "today", id) {
+function houseScreen(sub = "due", id) {
   if (sub === "edit") return choreForm(id);
-  const tabs = [["today", "Today"], ["all", "All tasks"]];
-  return `
-    <h1>House 🧽</h1>
-    <p class="sub">A little at a time keeps it all easy.</p>
-    <nav class="subtabs">
-      ${tabs.map(([t, label]) => `<a href="#house/${t}" class="${(sub || "today") === t ? "on" : ""}">${label}</a>`).join("")}
-    </nav>
-    ${sub === "all" ? allChoresScreen() : houseToday()}`;
+  if (sub === "all") return allChoresScreen();
+  return houseDue();
 }
 
-function choreRow(c) {
+// One job row: tap the circle when done, swipe left (or tap the clock) for Later.
+function choreRow(c, withLater = true) {
   const s = choreStatus(c);
   const done = doneToday(c);
-  return `<div class="chore">
-      <span class="dot ${s.level}" aria-label="${s.level}"></span>
-      <a class="grow chore-info" href="#house/edit/${c.id}">
-        <strong>${esc(c.name)}</strong><br>
-        <span class="small muted">${esc(c.room)} · ${done ? "Done today ✨" : s.text}</span>
-      </a>
-      <button class="small-btn ${done ? "secondary" : ""}" data-action="chore-done" data-id="${c.id}">${done ? "✓ Done" : "Done"}</button>
+  return `<div class="job-wrap" ${withLater && !done ? `data-swipe="${c.id}"` : ""}>
+      ${withLater && !done ? `<span class="job-under">Later</span>` : ""}
+      <div class="job ${done ? "done" : ""}">
+        <button class="circle-tick ${done ? "on" : ""}" data-action="chore-done" data-id="${c.id}" aria-label="${done ? "Undo" : "Done"}">${done ? icon("check") : ""}</button>
+        <a class="grow job-name" href="#house/edit/${c.id}">${esc(c.name)}<span class="small muted block">${esc(c.room)} · ${c.mins} min</span></a>
+        ${done ? `<span class="tag ok">Done</span>` : `<span class="tag ${s.level}">${s.tag}</span>`}
+        ${withLater && !done ? `<button class="circ sm" data-action="chore-later" data-id="${c.id}" aria-label="Not this week">${icon("timer")}</button>` : ""}
+      </div>
     </div>`;
 }
 
-function houseToday() {
-  const all = data.chores.map(choreStatus);
-  const count = (lvl) => all.filter((s) => s.level === lvl).length;
-  const isThu = dayName(todayKey()) === "Thu";
-  // Thursday's list: everything due, plus anything you've already ticked today.
-  const thursday = data.chores.filter((c) => doneToday(c) || ["red", "amber"].includes(choreStatus(c).level))
-    .sort((a, b) => doneToday(a) - doneToday(b) || choreStatus(b).score - choreStatus(a).score);
-  const left = thursday.filter((c) => !doneToday(c)).length;
-  const newCount = count("new");
+function houseDue() {
+  const due = dueChores();
+  const doneNow = data.chores.filter((c) => doneToday(c) && !due.includes(c));
+  const later = data.chores.filter(isLater);
+  const newCount = data.chores.filter((c) => !c.lastDone).length;
   if (blitzIds) blitzIds = blitzIds.filter((id) => findChore(id));
-
   return `
-    <div class="row wrap" style="gap:8px;margin-bottom:14px">
-      <span class="pill"><span class="dot red"></span> ${count("red")} overdue</span>
-      <span class="pill"><span class="dot amber"></span> ${count("amber")} due soon</span>
-      <span class="pill"><span class="dot green"></span> ${count("green")} all good</span>
-    </div>
+    ${topBar(backBtn("#more"), `<a class="circ dark" href="#house/edit" aria-label="Add a job">${icon("plus")}</a>`)}
+    ${headline("House", "due this week")}
 
-    ${newCount > 3 ? `<div class="card warm">
-      <h3>Quick setup</h3>
-      <p class="small">${newCount} tasks don't have a "last done" date yet. Tap a task to set roughly when you last did it, or start fresh with everything marked as done today.</p>
-      <button class="full secondary" data-action="chores-fresh">Start fresh (all done today)</button>
+    ${newCount > 3 ? `<div class="card notice col">
+      <p style="margin:0 0 4px"><strong>Quick setup</strong></p>
+      <p class="small muted" style="margin:0 0 10px">${newCount} jobs don't have a "last done" date. Start fresh, or set dates in All jobs.</p>
+      <button class="dark" data-action="chores-fresh">Start fresh: all done today</button>
     </div>` : ""}
 
-    <div class="card ${isThu ? "today" : ""}">
-      <div class="row between">
-        <h2>${isThu ? "Today's clean" : "Thursday clean"}</h2>
-        <span class="pill">${isThu ? "Today" : niceDate(nextThursday()).slice(0, 10)}</span>
-      </div>
-      <p class="small muted">${isThu ? "Most overdue first. Do what you can, it all counts." : "What's due right now, most overdue first."}</p>
-      ${thursday.length ? thursday.map(choreRow).join("") : `<p>Nothing due. The house is happy ✨</p>`}
-      ${thursday.length && !left ? `<p class="saved-flag" style="margin-top:8px">All done! Lovely work ✨</p>` : ""}
-    </div>
+    ${due.length || doneNow.length ? due.concat(doneNow).map((c) => choreRow(c)).join("") : `<div class="card empty">${icon("check")}<span>Nothing due this week. The house is happy.</span></div>`}
+    ${due.length ? `<p class="hint">Tap the circle when done. Swipe left (or tap ${icon("timer", "inline")}) to push a job to Later.</p>` : ""}
 
-    <div class="card soft">
-      <h2>⚡ 15-minute blitz</h2>
-      <p class="small">Low energy? I'll pick a few quick tasks that fit in 15 minutes.</p>
-      ${blitzIds && blitzIds.length ? blitzIds.map(findChore).map(choreRow).join("") : ""}
-      ${blitzIds && !blitzIds.length ? `<p>Nothing quick left to do. Put your feet up 🌴</p>` : ""}
-      <button class="full ${blitzIds ? "secondary" : ""}" data-action="blitz" style="margin-top:8px">${blitzIds ? "Pick again" : "Start a blitz"}</button>
+    <div class="chips" style="margin:6px 0 12px">
+      <button class="chip ${blitzIds ? "on" : ""}" data-action="blitz">${blitzIds ? "Pick again" : "15-min blitz"}</button>
+      <a class="chip" href="#house/all">All jobs</a>
     </div>
+    ${blitzIds ? `<p class="label">15-minute blitz</p>${blitzIds.length ? blitzIds.map(findChore).map((c) => choreRow(c, false)).join("") : `<div class="card empty"><span>Nothing quick left. Put your feet up.</span></div>`}` : ""}
+
+    ${later.length ? `<details class="card drop-card later-drawer">
+      <summary class="li">${icon("timer", "tile")}<span class="grow"><strong>Later</strong><span class="small muted block">Back on Monday, or bring one back now</span></span><span class="num">${later.length}</span>${icon("down", "chev")}</summary>
+      <div class="drop-body">${later.map((c) => `<div class="li tight"><span class="grow">${esc(c.name)}<span class="small muted block">${choreStatus(c).text}</span></span>
+        <button class="sm" data-action="chore-back" data-id="${c.id}">Bring back</button></div>`).join("")}</div>
+    </details>` : ""}
   `;
 }
 
 function allChoresScreen() {
   const groups = [...new Set(data.chores.map((c) => Number(c.every)))].sort((a, b) => a - b);
   return `
-    <a class="btn full" href="#house/edit" style="margin-bottom:14px">+ Add a task</a>
-    ${groups.map((days) => `<div class="card">
-        <h2>${freqLabel(days)}</h2>
-        ${data.chores.filter((c) => Number(c.every) === days).map(choreRow).join("")}
-      </div>`).join("")}
-    <p class="small muted">Tap a task to change its name, room, how often, or when you last did it.</p>
+    ${topBar(backBtn("#house"), `<a class="circ dark" href="#house/edit" aria-label="Add a job">${icon("plus")}</a>`)}
+    ${headline("All", "jobs")}
+    ${groups.map((days) => `<p class="label">${freqLabel(days)}</p>
+      <div class="card list-card">${data.chores.filter((c) => Number(c.every) === days).map((c) => {
+        const s = choreStatus(c);
+        return `<a class="li" href="#house/edit/${c.id}"><span class="grow">${esc(c.name)}<span class="small muted block">${esc(c.room)}${isLater(c) ? " · later" : ""}</span></span>
+          <span class="tag ${s.level}">${s.tag}</span>${icon("chev", "chev")}</a>`;
+      }).join("")}</div>`).join("")}
+    <p class="hint">Tap a job to change it, or set when you last did it.</p>
   `;
 }
 
@@ -153,56 +136,65 @@ function choreForm(id) {
   const c = findChore(id) || { name: "", room: "", every: 7, mins: 10, lastDone: "" };
   const options = FREQUENCIES.some((f) => f.days === Number(c.every)) ? FREQUENCIES : [...FREQUENCIES, { days: c.every, label: freqLabel(c.every) }];
   return `
-    <a class="back" href="#house/all">‹ All tasks</a>
-    <h1>${id ? "Edit task" : "Add a task"}</h1>
+    ${topBar(backBtn(id ? "#house" : "#house/all"), id ? `<button class="circ" data-action="chore-delete" data-id="${id}" aria-label="Delete job">${icon("x")}</button>` : "")}
+    ${headline(id ? "Edit" : "Add a", "job")}
     <div class="card">
-      <label class="field">Task<input id="c-name" value="${esc(c.name)}" placeholder="e.g. Clean bathroom"></label>
+      <label class="field">Job<input id="c-name" value="${esc(c.name)}" placeholder="e.g. Clean bathroom"></label>
       <label class="field">Room<input id="c-room" value="${esc(c.room)}" placeholder="e.g. Bathroom"></label>
       <label class="field">How often
         <select id="c-every">${options.map((f) => `<option value="${f.days}" ${Number(c.every) === f.days ? "selected" : ""}>${f.label}</option>`).join("")}</select></label>
       <label class="field">About how long (minutes)<input id="c-mins" type="number" inputmode="numeric" min="1" value="${esc(c.mins)}"></label>
-      <label class="field">Last done<input id="c-last" type="date" value="${esc(c.lastDone || "")}"></label>
+      <label class="field" style="margin-bottom:0">Last done<input id="c-last" type="date" value="${esc(c.lastDone || "")}"></label>
     </div>
-    <button class="full" data-action="chore-save" data-id="${id || ""}" style="margin-bottom:10px">Save</button>
-    ${id ? `<button class="full secondary" data-action="chore-delete" data-id="${id}">Delete task</button>` : ""}
+    <button class="full dark" data-action="chore-save" data-id="${id || ""}">Save</button>
   `;
 }
 
-// The cleaning card on the Home screen: overdue tasks first.
+// The cleaning dropdown on Home.
 function cleaningHomeHTML() {
   const due = dueChores();
-  const red = due.filter((c) => choreStatus(c).level === "red");
-  const amber = due.length - red.length;
-  const show = red.slice(0, 4);
-  return `<div class="card">
-      <div class="row between"><h2>Cleaning 🧽</h2><a class="muted small" href="#house" style="text-decoration:none">Open ›</a></div>
-      ${show.length ? show.map(choreRow).join("") : `<p>${amber ? `Nothing overdue. ${amber} due soon.` : "All caught up ✨"}</p>`}
-      ${red.length > show.length ? `<p class="small muted" style="margin-top:6px">and ${red.length - show.length} more</p>` : ""}
-    </div>`;
+  const late = due.filter((c) => choreStatus(c).level === "late").length;
+  return `<details class="card drop-card">
+      <summary class="li">${icon("sponge", "tile warm")}<span class="grow">Cleaning due</span>${due.length ? `<span class="num">${due.length}</span>` : `<span class="meta">All good</span>`}${icon("down", "chev")}</summary>
+      <div class="drop-body">
+        ${due.slice(0, 5).map((c) => choreRow(c)).join("") || `<p class="small muted" style="margin:0">Nothing due this week.</p>`}
+        ${due.length > 5 ? `<p class="small muted">+${due.length - 5} more</p>` : ""}
+        <a class="btn sm" href="#house" style="margin-top:6px">Open House${late ? ` · ${late} late` : ""}</a>
+      </div>
+    </details>`;
 }
 
 SCREENS.house = houseScreen;
 
 
-// ---------- 4. Buttons ----------
+// ---------- 4. Buttons and swiping ----------
 Object.assign(ACTIONS, {
-  // Tap Done to reset the task. Tap again the same day to undo.
+  // Tap the circle when done. Tap again the same day to undo.
   "chore-done"({ id }) {
     const c = findChore(id);
-    const today = todayKey();
     if (doneToday(c)) {
       c.lastDone = c.prevDone || null;
       delete c.prevDone;
     } else {
       c.prevDone = c.lastDone;
-      c.lastDone = today;
+      c.lastDone = todayKey();
+      delete c.laterUntil;
       toast(cheer());
-      // Finished everything on a Thursday? That's your Thursday clean ticked.
-      if (dayName(today) === "Thu" && !dueChores().length) {
-        setTick(today, "thu-tidy", true);
-        toast("Thursday clean done! 🎉");
-      }
     }
+    saveData();
+    render();
+  },
+
+  // Not this week: hide until next Monday.
+  "chore-later"({ id }) {
+    findChore(id).laterUntil = addDays(mondayOf(todayKey()), 7);
+    saveData();
+    toast("Moved to Later");
+    render();
+  },
+
+  "chore-back"({ id }) {
+    delete findChore(id).laterUntil;
     saveData();
     render();
   },
@@ -213,7 +205,7 @@ Object.assign(ACTIONS, {
   },
 
   "chores-fresh"() {
-    if (!confirm("Mark every task without a date as done today?")) return;
+    if (!confirm("Mark every job without a date as done today?")) return;
     data.chores.forEach((c) => { if (!c.lastDone) c.lastDone = todayKey(); });
     saveData();
     render();
@@ -221,7 +213,7 @@ Object.assign(ACTIONS, {
 
   "chore-save"({ id }) {
     const val = (f) => document.getElementById(f).value.trim();
-    if (!val("c-name")) return toast("Give the task a name first.");
+    if (!val("c-name")) return toast("Give the job a name first.");
     const chore = {
       id: id || "c-" + Date.now(),
       name: val("c-name"),
@@ -233,14 +225,45 @@ Object.assign(ACTIONS, {
     const old = findChore(chore.id);
     if (old) Object.assign(old, chore); else data.chores.push(chore);
     saveData();
-    toast("Saved ✓");
-    location.hash = "#house/all";
+    toast("Saved");
+    location.hash = "#house";
   },
 
   "chore-delete"({ id }) {
-    if (!confirm("Delete this task?")) return;
+    if (!confirm("Delete this job?")) return;
     data.chores = data.chores.filter((c) => c.id !== id);
     saveData();
     location.hash = "#house/all";
   }
+});
+
+// Swipe a job left to push it to Later.
+let swipe = null;
+document.addEventListener("pointerdown", (e) => {
+  const wrap = e.target.closest("[data-swipe]");
+  if (!wrap || e.target.closest("button")) return;
+  swipe = { wrap, row: wrap.querySelector(".job"), x: e.clientX, y: e.clientY, dx: 0, active: false };
+});
+document.addEventListener("pointermove", (e) => {
+  if (!swipe) return;
+  const dx = e.clientX - swipe.x, dy = e.clientY - swipe.y;
+  if (!swipe.active && Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy)) swipe.active = true;
+  if (!swipe.active) return;
+  swipe.dx = Math.min(0, dx);
+  swipe.row.style.transform = `translateX(${swipe.dx}px)`;
+});
+document.addEventListener("pointerup", () => {
+  if (!swipe) return;
+  const { wrap, row, dx } = swipe;
+  swipe = null;
+  if (dx < -10) swipedAt = Date.now();      // a swipe isn't a tap: don't open the job
+  if (dx < -80) ACTIONS["chore-later"]({ id: wrap.dataset.swipe });
+  else row.style.transform = "";
+});
+let swipedAt = 0;
+document.addEventListener("click", (e) => {
+  if (Date.now() - swipedAt < 400 && e.target.closest("[data-swipe]")) { e.preventDefault(); e.stopPropagation(); }
+}, true);
+document.addEventListener("pointercancel", () => {
+  if (swipe) { swipe.row.style.transform = ""; swipe = null; }
 });

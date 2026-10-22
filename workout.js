@@ -117,6 +117,28 @@ function finishWorkout() {
 
 
 // ---------- 3. Rest timer and celebrations ----------
+function clock(seconds) {
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+}
+
+// A soft two-note chime when rest is over.
+let audio = null;
+function chime() {
+  try {
+    audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+    [523, 784].forEach((freq, i) => {
+      const osc = audio.createOscillator(), gain = audio.createGain();
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.0001, audio.currentTime + i * 0.25);
+      gain.gain.exponentialRampToValueAtTime(0.2, audio.currentTime + i * 0.25 + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + i * 0.25 + 0.8);
+      osc.connect(gain).connect(audio.destination);
+      osc.start(audio.currentTime + i * 0.25);
+      osc.stop(audio.currentTime + i * 0.25 + 0.9);
+    });
+  } catch (e) { /* sound not available */ }
+}
+
 function restLeft() {
   const a = data.fit && data.fit.active;
   return a && a.rest ? Math.max(0, Math.round((a.rest.endsAt - Date.now()) / 1000)) : null;
@@ -132,7 +154,7 @@ setInterval(() => {
     saveData();
     chime();
     if (navigator.vibrate) navigator.vibrate([120, 60, 120]);
-    toast("Rest done. Next set 💪");
+    toast("Rest done. Next set");
     if (location.hash.startsWith("#train")) render();
   }
 }, 1000);
@@ -143,7 +165,7 @@ function confettiBurst() {
   const layer = document.createElement("div");
   layer.className = "confetti-layer";
   layer.innerHTML = Array.from({ length: 22 }, (_, i) =>
-    `<span class="confetti" style="left:${Math.random() * 100}%;animation-delay:${(Math.random() * 0.5).toFixed(2)}s">${["🎉", "⭐", "💪", "🌴", "🍑"][i % 5]}</span>`).join("");
+    `<span class="confetti" style="left:${Math.random() * 100}%;animation-delay:${(Math.random() * 0.5).toFixed(2)}s;background:${["#3fae9c", "#f3a98c", "#16181a", "#9fe0cf", "#f2c94c"][i % 5]}"></span>`).join("");
   document.body.appendChild(layer);
   setTimeout(() => layer.remove(), 3200);
 }
@@ -156,7 +178,7 @@ let swapCtx = "same";
 function trainScreen(sub, arg) {
   if (sub === "summary") return summaryScreen(arg);
   const a = fit().active;
-  if (!a) return `<a class="back" href="#fitness/plan">‹ Plan</a><h1>No workout running</h1><p class="muted">Start one from your plan or Today's training on Home.</p>`;
+  if (!a) return `${topBar(backBtn("#fitness/plan"))}${headline("No workout", "running")}<p class="sub">Start one from your week or the Up next card on Home.</p>`;
   if (swapOpen) return swapScreen(a);
   const e = a.exercises[a.exIndex];
   const ex = exById(e.ex) || { name: e.ex, unit: "", repsLabel: "reps", images: [], groups: ["core"] };
@@ -164,11 +186,8 @@ function trainScreen(sub, arg) {
   const up = goUpSuggestion(e, a.id);
   const mins = a.start ? Math.round((Date.now() - a.start) / 60000) : null;
   return `
-    <div class="row between">
-      <a class="back" href="#fitness/plan">‹ Plan</a>
-      <span class="small muted">${niceDate(a.date)}${mins !== null ? ` · ${mins} min` : ""}</span>
-    </div>
-    <h1 style="font-size:24px">${esc(a.name)}</h1>
+    ${topBar(backBtn("#fitness/plan"), `<span class="hi" style="text-align:right">${niceDate(a.date)}<b>${mins !== null ? `${mins} min` : "Logging"}</b></span>`)}
+    <h1 class="head" style="font-size:28px"><b>${esc(a.name)}</b></h1>
     <div class="ex-dots">${a.exercises.map((x, j) => {
       const all = x.sets.length && x.sets.every((s) => s.done);
       return `<button class="ex-dot ${j === a.exIndex ? "on" : ""} ${all ? "done" : ""}" data-action="train-go" data-i="${j}" aria-label="Exercise ${j + 1}">${j + 1}</button>`;
@@ -181,26 +200,26 @@ function trainScreen(sub, arg) {
           <h2 style="margin-bottom:2px">${esc(ex.name)}</h2>
           <p class="small muted" style="margin:0">${e.target.sets} × ${e.target.reps} ${ex.repsLabel} · rest ${e.target.rest}s</p>
           <div class="row" style="gap:6px;margin-top:6px">
-            <a class="btn secondary small-btn" href="#ex/${e.ex}">Form</a>
-            <button class="secondary small-btn" data-action="swap-open">⇄ Swap</button>
+            <a class="btn sm" href="#ex/${e.ex}">Form</a>
+            <button class="sm" data-action="swap-open">Swap</button>
           </div>
         </div>
       </div>
-      ${ex.upper ? `<div class="note">💛 ${UPPER_BODY_NOTE}</div>` : ""}
-      ${up ? `<div class="suggest">🌟 Every rep, twice in a row. Ready to try ${up} ${ex.unit}?</div>` : ""}
-      ${ex.cues ? `<p class="small" style="margin:8px 0">🎯 ${esc(ex.cues[0])}</p>` : ""}
+      ${ex.upper ? `<div class="note">${UPPER_BODY_NOTE}</div>` : ""}
+      ${up ? `<div class="suggest">Every rep, twice in a row. Ready to try ${up} ${ex.unit}?</div>` : ""}
+      ${ex.cues ? `<p class="small cue">${esc(ex.cues[0])}</p>` : ""}
 
       <div class="set-head small muted"><span>Set</span><span>${ex.unit ? `Weight (${ex.unit.replace("kg ", "")})` : ""}</span><span>${ex.repsLabel}</span><span></span></div>
       ${e.sets.map((s, si) => `
         <div class="set-row ${s.done ? "done" : ""}">
-          <span class="set-n">${s.pb ? "⭐" : si + 1}</span>
+          <span class="set-n">${s.pb ? icon("star", "inline fav") : si + 1}</span>
           ${ex.unit ? `<span class="wbox">
               <button class="secondary" data-action="train-step" data-s="${si}" data-dir="-1" aria-label="Less">−</button>
               <input type="number" inputmode="decimal" data-tw="w" data-s="${si}" value="${esc(s.w)}">
               <button class="secondary" data-action="train-step" data-s="${si}" data-dir="1" aria-label="More">+</button>
             </span>` : `<span></span>`}
           <input class="rbox" type="number" inputmode="numeric" data-tw="r" data-s="${si}" value="${esc(s.r)}">
-          <button class="set-tick ${s.done ? "on" : ""}" data-action="train-set" data-s="${si}" aria-label="Set done">✓</button>
+          <button class="set-tick ${s.done ? "on" : ""}" data-action="train-set" data-s="${si}" aria-label="Set done">${icon("check")}</button>
         </div>
         ${s.lastR !== null && s.lastR !== undefined ? `<p class="last-line small muted">Last time: ${s.lastW ? `${s.lastW} × ` : ""}${s.lastR}</p>` : ""}`).join("")}
       <div class="row" style="gap:6px;margin-top:6px">
@@ -210,14 +229,14 @@ function trainScreen(sub, arg) {
 
       <p class="small" style="font-weight:600;margin:10px 0 6px">How did it feel?</p>
       <div class="seg" style="margin-bottom:8px">${["easy", "good", "hard"].map((r) =>
-        `<button class="${e.rating === r ? "on" : ""}" data-action="train-rate" data-r="${r}">${{ easy: "😌 Easy", good: "🙂 Good", hard: "😮‍💨 Hard" }[r]}</button>`).join("")}</div>
+        `<button class="${e.rating === r ? "on" : ""}" data-action="train-rate" data-r="${r}">${{ easy: "Easy", good: "Good", hard: "Hard" }[r]}</button>`).join("")}</div>
       <textarea data-train-note rows="2" placeholder="Notes, e.g. lower back felt tight">${esc(e.note)}</textarea>
     </div>
 
     <div class="row" style="margin-bottom:10px">
-      ${a.exIndex > 0 ? `<button class="secondary" data-action="train-go" data-i="${a.exIndex - 1}">‹ Prev</button>` : ""}
-      ${last ? `<button class="grow" data-action="train-finish">Finish workout 🎉</button>`
-        : `<button class="grow" data-action="train-go" data-i="${a.exIndex + 1}">Next exercise ›</button>`}
+      ${a.exIndex > 0 ? `<button class="circ lg" data-action="train-go" data-i="${a.exIndex - 1}" aria-label="Previous">${icon("back")}</button>` : ""}
+      ${last ? `<button class="grow dark" data-action="train-finish">Finish workout</button>`
+        : `<button class="grow dark" data-action="train-go" data-i="${a.exIndex + 1}">Next exercise</button>`}
     </div>
     <a class="btn ghost full" href="#pickex/train/x">+ Add an exercise</a>
     <button class="ghost full" data-action="train-discard">Discard this workout</button>
@@ -242,8 +261,8 @@ function swapScreen(a) {
   const cur = exById(a.exercises[a.exIndex].ex);
   const opts = swapOptions(cur);
   return `
-    <button class="back ghost" data-action="swap-close" style="padding-left:0">‹ Back to workout</button>
-    <h1>Swap ${esc(cur.name)}</h1>
+    ${topBar(`<button class="circ" data-action="swap-close" aria-label="Back">${icon("back")}</button>`)}
+    ${headline("Swap", esc(cur.name))}
     <p class="sub">Same muscles (${esc(cur.groups[0])}), sets and reps stay the same.</p>
     <div class="seg">${[["same", "Anything"], ["busy", "Machine busy"], ["home", "At home"]].map(([k, l]) =>
       `<button class="${swapCtx === k ? "on" : ""}" data-action="swap-ctx" data-ctx="${k}">${l}</button>`).join("")}</div>
@@ -253,45 +272,45 @@ function swapScreen(a) {
 
 function summaryScreen(id) {
   const wk = workoutById(id);
-  if (!wk) return `<a class="back" href="#fitness/history">‹ History</a><p>Workout not found.</p>`;
+  if (!wk) return `${topBar(backBtn("#fitness/history"))}<p>Workout not found.</p>`;
   const sets = wk.exercises.reduce((n, e) => n + doneSets(e).length, 0);
   const pbs = wk.exercises.filter((e) => e.sets.some((s) => s.pb));
   const mins = wk.start && wk.end ? Math.round((wk.end - wk.start) / 60000) : null;
   if (celebrateNext) { celebrateNext = false; setTimeout(confettiBurst, 200); }
   return `
-    <h1>Workout done! 🎉</h1>
+    ${headline("Workout", "done")}
     <p class="sub">${esc(wk.name)} · ${niceDate(wk.date)}</p>
     <div class="stat-row">
       <div class="stat"><span class="big-number">${sets}</span><span class="small">sets</span></div>
       <div class="stat"><span class="big-number">${wk.exercises.length}</span><span class="small">exercises</span></div>
       <div class="stat"><span class="big-number">${mins ?? "-"}</span><span class="small">minutes</span></div>
     </div>
-    ${pbs.length ? `<div class="card warm"><h2>Personal bests ⭐</h2>${pbs.map((e) => {
+    ${pbs.length ? `<div class="card notice col"><p class="label" style="margin:0 0 6px">Personal bests</p>${pbs.map((e) => {
       const ex = exById(e.ex);
       const top = Math.max(...e.sets.filter((s) => s.pb).map((s) => Number(ex.unit ? s.w : s.r)));
       return `<p style="margin:0 0 4px">${esc(ex.name)}: <strong>${top}${ex.unit ? " " + ex.unit : " " + ex.repsLabel}</strong></p>`;
     }).join("")}</div>` : ""}
     <div class="card">${wk.exercises.map((e) => {
       const ex = exById(e.ex) || { name: e.ex };
-      return `<p style="margin:0 0 6px"><strong>${esc(ex.name)}</strong> ${e.rating ? `· ${{ easy: "😌", good: "🙂", hard: "😮‍💨" }[e.rating]}` : ""}<br>
+      return `<p style="margin:0 0 6px"><strong>${esc(ex.name)}</strong> ${e.rating ? `<span class="tag">${e.rating}</span>` : ""}<br>
         <span class="small muted">${doneSets(e).map((s) => `${s.w ? s.w + "×" : ""}${s.r}`).join(", ") || "no sets"}</span></p>`;
     }).join("")}</div>
-    <a class="btn full" href="#fitness/plan" style="margin-bottom:10px">Back to my plan</a>
-    <a class="btn secondary full" href="#wlog/${wk.id}">Edit this workout</a>
+    <a class="btn full dark" href="#fitness/plan">Back to my week</a>
+    <a class="btn full" href="#wlog/${wk.id}">Edit this workout</a>
   `;
 }
 
 function historyScreen() {
   const list = fit().workouts.slice().sort(byDate).reverse();
   return `
-    ${fit().active ? `<a class="btn full" href="#train" style="margin-bottom:12px">▶️ Back to workout in progress</a>` : ""}
+    ${fit().active ? `<a class="btn full dark" href="#train">${icon("play")} Back to workout in progress</a>` : ""}
     ${list.length ? list.map((w) => {
       const sets = w.exercises.reduce((n, e) => n + doneSets(e).length, 0);
       const pbs = w.exercises.reduce((n, e) => n + e.sets.filter((s) => s.pb).length, 0);
       const mins = w.start && w.end ? Math.round((w.end - w.start) / 60000) : null;
       return `<a class="card" href="#wlog/${w.id}" style="display:block;text-decoration:none;color:inherit">
           <div class="row between"><h3>${esc(w.name)}</h3><span class="small muted">${niceDate(w.date)}</span></div>
-          <p class="small muted" style="margin:0">${sets} sets · ${w.exercises.length} exercises${mins ? ` · ${mins} min` : ""}${pbs ? ` · ⭐ ${pbs} PB${pbs > 1 ? "s" : ""}` : ""}</p>
+          <p class="small muted" style="margin:0">${sets} sets · ${w.exercises.length} exercises${mins ? ` · ${mins} min` : ""}${pbs ? ` · ${pbs} PB${pbs > 1 ? "s" : ""}` : ""}</p>
         </a>`;
     }).join("") : `<p class="muted">No workouts logged yet. Start one from your plan.</p>`}
   `;
@@ -300,10 +319,10 @@ function historyScreen() {
 // Edit a past workout: every set, weight and rep can be changed.
 function workoutLogScreen(id) {
   const wk = workoutById(id);
-  if (!wk) return `<a class="back" href="#fitness/history">‹ History</a><p>Workout not found.</p>`;
+  if (!wk) return `${topBar(backBtn("#fitness/history"))}<p>Workout not found.</p>`;
   return `
-    <a class="back" href="#fitness/history">‹ History</a>
-    <h1>Edit workout</h1>
+    ${topBar(backBtn("#fitness/history"), `<button class="circ" data-action="wlog-delete" data-id="${id}" aria-label="Delete workout">${icon("x")}</button>`)}
+    ${headline("Edit", "workout")}
     <div class="card">
       <label class="field">Name<input data-wlog="${id}" data-field="name" value="${esc(wk.name)}"></label>
       <label class="field">Date<input type="date" data-wlog="${id}" data-field="date" value="${wk.date}"></label>
@@ -312,19 +331,19 @@ function workoutLogScreen(id) {
       const ex = exById(e.ex) || { name: e.ex, unit: "", repsLabel: "reps" };
       return `<div class="card">
           <div class="row between"><strong>${esc(ex.name)}</strong>
-            <button class="ghost" data-action="wlog-remove-ex" data-id="${id}" data-e="${ei}" aria-label="Remove">✕</button></div>
+            <button class="ghost" data-action="wlog-remove-ex" data-id="${id}" data-e="${ei}" aria-label="Remove">${icon("x")}</button></div>
           ${e.sets.map((s, si) => `<div class="set-row ${s.done ? "done" : ""}">
-              <span class="set-n">${s.pb ? "⭐" : si + 1}</span>
+              <span class="set-n">${s.pb ? icon("star", "inline fav") : si + 1}</span>
               ${ex.unit ? `<input type="number" inputmode="decimal" data-wlog="${id}" data-e="${ei}" data-s="${si}" data-field="w" value="${esc(s.w)}" aria-label="Weight">` : "<span></span>"}
               <input class="rbox" type="number" inputmode="numeric" data-wlog="${id}" data-e="${ei}" data-s="${si}" data-field="r" value="${esc(s.r)}" aria-label="${ex.repsLabel}">
-              <button class="set-tick ${s.done ? "on" : ""}" data-action="wlog-set" data-id="${id}" data-e="${ei}" data-s="${si}">✓</button>
+              <button class="set-tick ${s.done ? "on" : ""}" data-action="wlog-set" data-id="${id}" data-e="${ei}" data-s="${si}" aria-label="Set done">${icon("check")}</button>
             </div>`).join("")}
           <button class="ghost small-btn" data-action="wlog-addset" data-id="${id}" data-e="${ei}">+ Add set</button>
-          ${e.note ? `<p class="small muted">📝 ${esc(e.note)}</p>` : ""}
+          ${e.note ? `<p class="small muted"> ${esc(e.note)}</p>` : ""}
         </div>`;
     }).join("")}
     <label class="field">Workout notes<textarea data-wlog="${id}" data-field="notes" rows="2">${esc(wk.notes || "")}</textarea></label>
-    <button class="full secondary" data-action="wlog-delete" data-id="${id}">Delete this workout</button>
+
   `;
 }
 
@@ -370,7 +389,7 @@ Object.assign(ACTIONS, {
       const earlierToday = e.sets.some((x, i) => i !== Number(s) && x.pb);
       if (best > 0 && sameKind && value > best && !earlierToday) {
         set.pb = true;
-        toast(`New personal best! ${value}${ex.unit && Number(set.w) ? " " + ex.unit : ""} 🎉`);
+        toast(`New personal best: ${value}${ex.unit && Number(set.w) ? " " + ex.unit : ""}`);
         confettiBurst();
       }
       const lastSet = Number(s) === e.sets.length - 1 && a.exIndex === a.exercises.length - 1;
@@ -467,5 +486,5 @@ document.addEventListener("change", (e) => {
     old.forEach((s) => moveSession(s.id, el.value));
   } else wk[f] = el.value;
   saveData();
-  toast("Saved ✓");
+  toast("Saved");
 });

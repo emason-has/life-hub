@@ -11,29 +11,13 @@
 
 // ---------- 1. Goal checks ----------
 const LEVEL_ORDER = { green: 0, amber: 1, red: 2 };
-const STATUS_TEXT = { green: "On track 🌊", amber: "Slipping a little", red: "Off track this week" };
-const HABIT_IDS = [
-  { id: "protein-meals", label: "protein with each meal", short: "Protein" },
-  { id: "daily-walk", label: "a daily walk", short: "Walk" },
-  { id: "bed-on-time", label: "bed on time (sleep)", short: "Sleep" },
-  { id: "woke-on-time", label: "waking on time", short: "Wake" },
-  { id: "posture-routine", label: "the posture routine", short: "Posture" }
-];
-
+const STATUS_TEXT = { green: "On track", amber: "Slipping a little", red: "Off track this week" };
 // The first day from today on with no strength session (good spot for an extra one).
 function freeDay(monday, avoidStrength = true) {
   return weekKeys(monday).filter((k) => k >= todayKey()).find((k) => {
     const list = sessionsOn(k).filter((s) => s.status !== "skipped");
     return avoidStrength ? !list.some((s) => typeInfo(s.type).strength) : !list.some((s) => !s.optional);
   });
-}
-
-function habitDone(key, id) {
-  if (isTicked(key, id)) return true;
-  const h = (data.health || {})[key];
-  if (id === "daily-walk" && h && h.steps >= stepGoal()) return true;
-  if (id === "bed-on-time" && h && h.sleep >= 7) return true;
-  return false;
 }
 
 function goalChecks() {
@@ -65,7 +49,7 @@ function goalChecks() {
       const { projected } = weekSets(monday);
       const tpl = (projected.glutes || 0) / t.glutes[0] <= (projected.back || 0) / t.back[0] ? "t-short-glutes" : "t-short-upper";
       checks.push({ level: target - expected >= 2 ? "red" : "amber",
-        text: `Only ${plural(score.strength, "strength session")} so far${day ? ` - a 20 min short session ${dayLong(day)} keeps you on track` : ""}.`,
+        text: `${score.strength ? `Only ${plural(score.strength, "strength session")}` : "No strength sessions"} so far.${day ? ` A 20 min short session ${dayLong(day)} keeps you on track.` : ""}`,
         fix: day ? { label: `Add short gym ${dayName(day)}`, action: "fix-add", key: day, type: "short-gym", tpl }
           : { label: "Plan next week", href: `#fitness/plan/${addDays(monday, 7)}` } });
     }
@@ -84,7 +68,7 @@ function goalChecks() {
         text: `${label} sets are low this week (${p} of ${min}${max ? "-" + max : "+"}) - ${muscleFixText(monday, g, need - p)}`,
         fix: muscleFix(monday, g, need - p) });
     });
-    if (!checks.some((c) => c.area)) checks.push({ level: "green", text: "Glute, back, triceps and core sets are on target 🍑" });
+    if (!checks.some((c) => c.area)) checks.push({ level: "green", text: "Glute, back, triceps and core sets are on target" });
   }
 
   // Runs
@@ -106,18 +90,7 @@ function goalChecks() {
       fix: { label: `Try ${next}kg next time`, action: "fix-bump", ex: ex.id, w: next } });
   } else if (trend.up) {
     const ex = exById(trend.up.ex);
-    checks.push({ level: "green", text: `${ex.name} is up ${trend.up.gain}kg in the last few weeks 💪` });
-  }
-
-  // Habits
-  const past = weekKeys(monday).filter((k) => k < today);
-  if (past.length) {
-    const counts = HABIT_IDS.map((h) => ({ ...h, n: past.filter((k) => habitDone(k, h.id)).length }));
-    const pct = Math.round((counts.reduce((a, h) => a + h.n, 0) / (HABIT_IDS.length * past.length)) * 100);
-    const low = counts.slice().sort((a, b) => a.n - b.n)[0];
-    checks.push({ level: pct >= 70 ? "green" : pct >= 40 ? "amber" : "red", soft: true,
-      text: pct >= 70 ? `Habits ${pct}% this week. Lovely consistency.` : `Habits ${pct}% this week - just focus on ${low.label} tomorrow.`,
-      fix: pct >= 70 ? null : { label: "Open routines", href: "#routines" } });
+    checks.push({ level: "green", text: `${ex.name} is up ${trend.up.gain}kg in the last few weeks` });
   }
 
   // Two lighter weeks in a row
@@ -128,7 +101,7 @@ function goalChecks() {
       fix: { label: "Plan a Normal week", action: "plan-week", monday: next, mode: "normal", go: "1" } });
   }
 
-  // Overall: sessions and sets decide it; trends and habits can only nudge it to amber.
+  // Overall: sessions and sets decide it; the gentler checks can only nudge it to amber.
   let overall = "green";
   checks.forEach((c) => {
     const lvl = c.soft && c.level === "red" ? "amber" : c.level;
@@ -204,7 +177,7 @@ function baliProjection(goal) {
 
 function baliProjectionHTML() {
   return `<div class="card">
-    <h2>Bali projection 🏝️</h2>
+    <p class="label" style="margin-top:0">Bali projection</p>
     <p class="small muted">Where your key lifts are heading by ${niceDate(data.settings.baliDate).slice(4)}, at your current pace.</p>
     ${GOALS.map((g) => {
       const p = baliProjection(g);
@@ -213,7 +186,7 @@ function baliProjectionHTML() {
       let line;
       if (p.state === "none") line = `Log ${g.label.toLowerCase()} to see a projection.`;
       else if (p.state === "early") line = `Now ${p.current} ${g.unit}. Log one more week to see your pace.`;
-      else if (p.current >= g.target) line = `Goal reached: <strong>${p.current} ${g.unit}</strong> 🎉 Anything more is a bonus.`;
+      else if (p.current >= g.target) line = `Goal reached: <strong>${p.current} ${g.unit}</strong> Anything more is a bonus.`;
       else if (p.projected >= g.target) line = `Ahead of pace: at a steady rate you should pass <strong>${g.target} ${g.unit.replace(" each side", "")}</strong> around ${niceDate(addDays(todayKey(), p.reachIn * 7)).slice(4)}, well before Bali ✓`;
       else line = `Heading for about <strong>${p.projected} ${g.unit}</strong> (goal ${g.text}). Adding ${Math.ceil(p.needed * 2 * 4) / 4}kg every 2 weeks gets you there.`;
       return `<div style="margin-bottom:14px">
@@ -267,7 +240,7 @@ function chartsHTML() {
 
   return `
     <div class="card">
-      <h2>Weight over time 📈</h2>
+      <h2>Weight over time</h2>
       ${logged.length ? `<select data-chart-ex>${logged.map((id) => `<option value="${id}" ${id === chartEx ? "selected" : ""}>${esc((exById(id) || { name: id }).name)}</option>`).join("")}</select>
         ${lineChart(h.map((x) => ({ date: x.date, weight: x.top, reps: [x.top] })), goal ? goal.target : null)}
         <p class="small muted">${ex && h.some((x) => x.byWeight) ? `Heaviest set each session (${ex.unit})` : "Best reps each session"}${goal ? " · dashed line = Bali goal" : ""}</p>`
@@ -304,20 +277,20 @@ function fitnessProgressScreen(section = "goals") {
   const nav = `<div class="chips">${tabs.map(([k, l]) => `<a class="chip ${section === k ? "on" : ""}" href="#fitness/progress/${k}">${l}</a>`).join("")}</div>`;
   if (section === "charts") return nav + chartsHTML();
   if (section === "body") return nav + measurementsHTML() + photoHTML() + feelingsHTML();
-  return nav + goalsHTML() + baliProjectionHTML() + habitsGridHTML() + weeksSummaryHTML();
+  return nav + goalsHTML() + baliProjectionHTML() + weeksSummaryHTML();
 }
 
 function fixButton(fix) {
   if (!fix) return "";
-  if (fix.href) return `<a class="btn small-btn" href="${fix.href}">${esc(fix.label)}</a>`;
+  if (fix.href) return `<a class="btn sm dark" href="${fix.href}">${esc(fix.label)}</a>`;
   const attrs = Object.entries(fix).filter(([k]) => !["label", "action"].includes(k)).map(([k, v]) => `data-${k}="${esc(v)}"`).join(" ");
-  return `<button class="small-btn" data-action="${fix.action}" ${attrs}>${esc(fix.label)}</button>`;
+  return `<button class="sm dark" data-action="${fix.action}" ${attrs}>${esc(fix.label)}</button>`;
 }
 
 function goalsHTML() {
   const { overall, checks } = goalChecks();
   return `<div class="card status-card ${overall}">
-      <div class="row between"><h2>This week</h2><span class="status-pill ${overall}">${STATUS_TEXT[overall]}</span></div>
+      <div class="row between"><p class="label" style="margin:0">This week</p><span class="status-pill ${overall}">${STATUS_TEXT[overall]}</span></div>
       ${checks.map((c) => `<div class="check">
           <span class="dot ${c.level}"></span>
           <div class="grow"><p style="margin:0">${esc(c.text)}</p>${c.fix ? `<div style="margin-top:6px">${fixButton(c.fix)}</div>` : ""}</div>
@@ -330,35 +303,23 @@ function statusHomeHTML() {
   const { overall, checks } = goalChecks();
   const top = checks.find((c) => c.level !== "green" && c.fix) || checks.find((c) => c.level !== "green");
   return `<div class="card status-card ${overall}">
-      <div class="row between"><h2>Progress</h2><span class="status-pill ${overall}">${STATUS_TEXT[overall]}</span></div>
-      <p style="margin-bottom:${top && top.fix ? "8px" : "0"}">${top ? esc(top.text) : "Everything's on track. Keep doing what you're doing 🌊"}</p>
-      ${top && top.fix ? fixButton(top.fix) : ""}
-      <a class="small" href="#fitness/progress" style="display:block;margin-top:8px">See all goals ›</a>
+      <div class="row between"><p class="label" style="margin:0">Progress</p><span class="status-pill ${overall}">${STATUS_TEXT[overall]}</span></div>
+      <p style="margin:8px 0 ${top && top.fix ? "10px" : "0"}">${top ? esc(top.text) : "Everything's on track. Keep doing what you're doing."}</p>
+      <div class="row" style="gap:8px">${top && top.fix ? fixButton(top.fix) : ""}<a class="btn sm" href="#fitness/progress">All goals</a></div>
     </div>`;
-}
-
-function habitsGridHTML() {
-  const monday = mondayOf(todayKey());
-  const keys = weekKeys(monday);
-  return `<div class="card">
-    <h2>Habits this week</h2>
-    <div class="hgrid">
-      <span></span>${keys.map((k) => `<span class="small muted ${k === todayKey() ? "today-col" : ""}">${dayName(k)[0]}</span>`).join("")}
-      ${HABIT_IDS.map((h) => `<span class="small">${h.short}</span>${keys.map((k) =>
-        `<span class="hcell ${habitDone(k, h.id) ? "on" : k < todayKey() ? "miss" : ""}">${habitDone(k, h.id) ? "✓" : ""}</span>`).join("")}`).join("")}
-    </div>
-    <p class="small muted">Walk counts from steps over ${stepGoal().toLocaleString()} too, and sleep from 7+ hours in Health.</p>
-  </div>`;
 }
 
 function weeksSummaryHTML() {
   const totals = weekTypeTotals();
   const all = fit().workouts.length;
-  return `<div class="card soft">
-    <h2>Your weeks</h2>
-    <p>🔥 ${dayStreak()}-day streak · 🏆 ${weekWinStreak()} week${weekWinStreak() === 1 ? "" : "s"} won in a row</p>
-    <p class="small">💪 ${totals.normal} Normal · ⏱️ ${totals.busy} Busy · 🌱 ${totals.light} Light weeks so far. Busy and Light weeks still count toward your streak.</p>
-    <p class="small" style="margin:0">${all} workout${all === 1 ? "" : "s"} logged in total.</p>
+  return `<div class="dark-card col">
+    <div class="lbl">Your weeks</div>
+    <div class="stat-grid">
+      <div><b>${dayStreak()}</b><span>day streak</span></div>
+      <div><b>${weekWinStreak()}</b><span>weeks won</span></div>
+      <div><b>${all}</b><span>workouts</span></div>
+    </div>
+    <p class="small" style="margin:10px 0 0;opacity:0.75">${totals.normal} Normal · ${totals.busy} Busy · ${totals.light} Light weeks. Busy and Light weeks still count.</p>
   </div>`;
 }
 
@@ -367,7 +328,7 @@ function targetsSettingsHTML() {
   const t = fit().targets;
   const num = (path, val, label) => `<label class="field grow">${label}<input type="number" inputmode="numeric" data-target="${path}" value="${val ?? ""}"></label>`;
   return `<div class="card">
-    <h2>Weekly fitness targets 🎯</h2>
+    <p class="label" style="margin-top:0">Weekly fitness targets</p>
     ${num("strength", t.strength, "Strength sessions per week")}
     ${["glutes", "back", "triceps", "core"].map((g) => `<div class="row">${num(g + ".0", t[g][0], MUSCLE_GROUPS.find((m) => m.id === g).label + " sets: min")}${num(g + ".1", t[g][1], "max")}</div>`).join("")}
     <div class="row">${num("runs.0", t.runs[0], "Runs: min")}${num("runs.1", t.runs[1], "max")}</div>
@@ -381,20 +342,20 @@ Object.assign(ACTIONS, {
   "fix-add"({ key, type, tpl }) {
     addSession(key, newSession(type, tpl || null, key));
     saveData();
-    toast(`Added to ${niceDate(key)} 💪`);
+    toast(`Added to ${niceDate(key)}`);
     render();
   },
   "fix-extra"({ sid, ex, n }) {
     const found = findSession(sid);
     if (found) { found.s.extra = found.s.extra || {}; found.s.extra[ex] = (found.s.extra[ex] || 0) + Number(n); }
     saveData();
-    toast(`Added ${n} sets to ${found ? dayLong(found.key) : "that day"} 💪`);
+    toast(`Added ${n} sets to ${found ? dayLong(found.key) : "that day"}`);
     render();
   },
   "fix-bump"({ ex, w }) {
     fit().bump[ex] = Number(w);
     saveData();
-    toast(`Next time, ${exById(ex).name} starts at ${w}kg 💪`);
+    toast(`Next time, ${exById(ex).name} starts at ${w}kg`);
     render();
   },
   "chart-muscle"({ g }) { chartMuscle = g; render(); }
@@ -408,6 +369,6 @@ document.addEventListener("change", (e) => {
     const v = el.value === "" ? null : Number(el.value);
     if (i === undefined) fit().targets[key] = v || 1; else fit().targets[key][Number(i)] = v;
     saveData();
-    toast("Target saved ✓");
+    toast("Target saved");
   }
 });

@@ -232,19 +232,18 @@ function mealsScreen(sub = "plan", id) {
   const tabs = [["plan", "Plan"], ["shop", "Shop"], ["recipes", "Recipes"]];
   const draw = { shop: shopScreen, recipes: recipesScreen }[sub] || planScreen;
   return `
-    <h1>Meals 🥗</h1>
-    <p class="sub">Simple, high protein, no stress.</p>
-    <nav class="subtabs">
-      ${tabs.map(([t, label]) => `<a href="#meals/${t}" class="${(sub || "plan") === t ? "on" : ""}">${label}</a>`).join("")}
+    ${headline("Food", { shop: "shopping list", recipes: "recipes" }[sub] || "this week")}
+    <nav class="chips tabs-chips">
+      ${tabs.map(([t, label]) => `<a href="#meals/${t}" class="chip ${(sub || "plan") === t ? "on" : ""}">${label}</a>`).join("")}
     </nav>
     ${draw()}`;
 }
 
 function mealWeekNav(monday) {
-  return `<div class="row between">
-      <button class="ghost" data-action="meal-week" data-step="-1">‹ Prev</button>
-      <button class="ghost" data-action="meal-week" data-step="0"><strong>Week of ${niceDate(monday).slice(4)}</strong></button>
-      <button class="ghost" data-action="meal-week" data-step="1">Next ›</button>
+  return `<div class="week-nav">
+      <button class="circ sm" data-action="meal-week" data-step="-1" aria-label="Previous week">${icon("back")}</button>
+      <button class="week-label" data-action="meal-week" data-step="0">Week of ${niceDate(monday).slice(4)}</button>
+      <button class="circ sm" data-action="meal-week" data-step="1" aria-label="Next week">${icon("chev")}</button>
     </div>`;
 }
 
@@ -258,12 +257,12 @@ function planScreen() {
   const days = WEEK_DAYS.map((day, i) => {
     const key = addDays(monday, i);
     return `<div class="card ${key === todayKey() ? "today" : ""}">
-        <h3>${niceDate(key)}</h3>
+        <p class="label" style="margin:0 0 4px">${niceDate(key)}${key === todayKey() ? " · Today" : ""}</p>
         ${MEAL_SLOTS.map((s) => {
           const r = findRecipe(plan[`${day}-${s.id}`]);
           return `<a class="slot" href="#pick/${monday}/${day}-${s.id}">
               <span class="muted small">${s.label}</span>
-              <span class="${r ? "" : "muted"}">${r ? esc(r.name) : "+ Add"}</span>
+              <span class="${r ? "" : "muted"}">${r ? esc(r.name) : "Add"}</span>
             </a>`;
         }).join("")}
       </div>`;
@@ -271,18 +270,20 @@ function planScreen() {
 
   return `
     ${mealWeekNav(monday)}
-    <div class="row" style="margin-bottom:14px">
-      <button class="grow" data-action="surprise" data-monday="${monday}">🎲 Surprise me</button>
-      <a class="btn secondary" href="#meals/shop">🛒 List</a>
+    <div class="row" style="gap:8px;margin-bottom:12px">
+      <button class="grow dark" data-action="surprise" data-monday="${monday}">Surprise me</button>
+      <a class="btn grow" href="#meals/shop">${icon("cart")} Shopping list</a>
     </div>
 
-    <div class="card soft">
-      <h2>Batch cooking 🍳</h2>
-      <p><strong>Big cook (Sun or Mon):</strong> ${list(batch.big)}</p>
-      <p><strong>Wednesday top-up:</strong> ${list(batch.topup)}</p>
-      <p><strong>Sunday dinner:</strong> ${list(batch.sunday)}</p>
-      <p class="small muted">Rough day? There's a freezer meal for that. Weekday lunches are free at work: pick the curry or protein and fill up on salad and veg.</p>
-    </div>
+    <details class="card drop-card">
+      <summary class="li">${icon("food", "tile")}<span class="grow"><strong>Batch cooking</strong></span>${icon("down", "chev")}</summary>
+      <div class="drop-body small">
+        <p><strong>Big cook (Sun or Mon):</strong> ${list(batch.big)}</p>
+        <p><strong>Wednesday top-up:</strong> ${list(batch.topup)}</p>
+        <p><strong>Sunday dinner:</strong> ${list(batch.sunday)}</p>
+        <p class="muted" style="margin:0">Weekday lunches are free at work: pick the curry or protein and fill up on salad and veg.</p>
+      </div>
+    </details>
 
     ${days}
   `;
@@ -302,8 +303,8 @@ function pickScreen(monday, slotKey) {
   const others = data.recipes.filter((r) => r.meal !== slot);
   const dayIndex = WEEK_DAYS.indexOf(day);
   return `
-    <a class="back" href="#meals/plan">‹ Plan</a>
-    <h1>${label}</h1>
+    ${topBar(backBtn("#meals/plan"))}
+    ${headline("Pick", label.toLowerCase())}
     <p class="sub">${dayIndex >= 0 ? niceDate(addDays(monday, dayIndex)) : ""}</p>
     ${current ? `<button class="full secondary" data-action="assign" data-monday="${monday}" data-slot="${slotKey}" data-id="" style="margin-bottom:12px">Clear this meal</button>` : ""}
     <div class="card">${matching.map(row).join("") || `<p class="muted">No ${label.toLowerCase()} recipes yet.</p>`}</div>
@@ -324,7 +325,7 @@ function shopScreen() {
     const left = list.filter((i) => !state.checked[i.key]).length;
     return `<div class="card">
         <div class="row between"><h2>${store}</h2>
-          <button class="small-btn secondary" data-action="copy-shop" data-store="${store}">📋 Copy</button></div>
+          <button class="sm ghost" data-action="copy-shop" data-store="${store}">Copy</button></div>
         <p class="small muted">${left} to get</p>
         ${list.map((i) => `<div class="row">
             <button class="tick ${state.checked[i.key] ? "on" : ""}" data-action="shop-tick" data-key="${esc(i.key)}">
@@ -336,22 +337,22 @@ function shopScreen() {
 
   return `
     ${mealWeekNav(monday)}
-    <button class="full" data-action="copy-shop" style="margin-bottom:8px">📋 Copy list as text (for Minimalist)</button>
-    <p class="small muted">Copies everything not ticked yet, one item per line. Tap a store name to move an item; it remembers next time.</p>
+    <button class="full dark" data-action="copy-shop">Copy list for Minimalist</button>
+    <p class="hint">Copies what's left, one item per line. Tap a store to move an item.</p>
     ${groups}
-    <div class="card">
-      <h3>Add something</h3>
-      <div class="row"><input id="shop-extra" class="grow" placeholder="e.g. Coffee pods" style="margin:0">
-        <button data-action="shop-add" data-monday="${monday}">Add</button></div>
+    <div class="card add-row">
+      <input id="shop-extra" placeholder="Add something, e.g. coffee pods">
+      <button class="circ dark" data-action="shop-add" data-monday="${monday}" aria-label="Add">${icon("plus")}</button>
     </div>
-    <div class="card soft">
-      <h3>Weekly staples</h3>
-      <p class="small muted">Always on the list. Tick them off if you already have them.</p>
-      <ul class="list">${data.staples.map((s, i) => `<li class="row between"><span>${esc(s)}</span>
-        <button class="ghost" data-action="staple-remove" data-i="${i}" aria-label="Remove">✕</button></li>`).join("")}</ul>
-      <div class="row"><input id="staple-new" class="grow" placeholder="Add a staple" style="margin:0">
-        <button class="secondary" data-action="staple-add">Add</button></div>
-    </div>
+    <details class="card drop-card">
+      <summary class="li">${icon("cart", "tile")}<span class="grow"><strong>Weekly staples</strong><span class="small muted block">Always on the list</span></span><span class="num">${data.staples.length}</span>${icon("down", "chev")}</summary>
+      <div class="drop-body">
+        ${data.staples.map((s, i) => `<div class="li tight"><span class="grow">${esc(s)}</span>
+          <button class="circ sm" data-action="staple-remove" data-i="${i}" aria-label="Remove">${icon("x")}</button></div>`).join("")}
+        <div class="add-row" style="margin-top:8px"><input id="staple-new" placeholder="Add a staple">
+          <button class="circ" data-action="staple-add" aria-label="Add staple">${icon("plus")}</button></div>
+      </div>
+    </details>
     ${Object.keys(state.checked).length ? `<button class="ghost full" data-action="shop-reset" data-monday="${monday}">Untick everything</button>` : ""}
   `;
 }
@@ -362,17 +363,17 @@ function recipesScreen() {
     const flags = foodFlags(r);
     const search = [r.name, r.meal, ...r.tags, ...r.ingredients].join(" ").toLowerCase();
     return `<a class="card recipe-card" href="#recipe/${r.id}" data-search="${esc(search)}" style="display:block;text-decoration:none;color:inherit">
-        <div class="row between"><h3>${esc(r.name)}</h3><span class="pill">${r.meal}</span></div>
+        <div class="row between"><h3>${esc(r.name)}</h3><span class="tag">${r.meal}</span></div>
         <p class="small muted" style="margin:0">${r.protein ? `${r.protein}g protein · ` : ""}${r.tags.map(esc).join(" · ")}</p>
-        ${flags.length ? `<p class="small" style="margin:6px 0 0">⚠️ Heads up: ${flags.map(esc).join(", ")}</p>` : ""}
+        ${flags.length ? `<p class="small" style="margin:6px 0 0"> Heads up: ${flags.map(esc).join(", ")}</p>` : ""}
       </a>`;
   }).join("");
   return `
-    <a class="btn full" href="#meals/add" style="margin-bottom:12px">+ Add a recipe</a>
-    <input id="recipe-search" type="search" placeholder="Search recipes, tags or ingredients" style="margin:0 0 14px">
-    <details class="card soft">
-      <summary><strong>My food preferences</strong></summary>
-      <ul style="margin:10px 0 0;padding-left:20px">${FOOD_PREFS.map((p) => `<li class="small">${esc(p)}</li>`).join("")}</ul>
+    <a class="btn full dark" href="#meals/add">${icon("plus")} Add a recipe</a>
+    <label class="search">${icon("search")}<input id="recipe-search" type="search" placeholder="Search recipes or ingredients"></label>
+    <details class="card drop-card">
+      <summary class="li">${icon("heart", "tile")}<span class="grow"><strong>My food preferences</strong></span>${icon("down", "chev")}</summary>
+      <ul class="drop-body plain-list">${FOOD_PREFS.map((p) => `<li>${esc(p)}</li>`).join("")}</ul>
     </details>
     ${cards}
   `;
@@ -380,21 +381,18 @@ function recipesScreen() {
 
 function recipeScreen(id) {
   const r = findRecipe(id);
-  if (!r) return `<a class="back" href="#meals/recipes">‹ Recipes</a><p>Recipe not found.</p>`;
+  if (!r) return `${topBar(backBtn("#meals/recipes"))}<p>Recipe not found.</p>`;
   const flags = foodFlags(r);
   return `
-    <a class="back" href="#meals/recipes">‹ Recipes</a>
-    <h1>${esc(r.name)}</h1>
+    ${topBar(backBtn("#meals/recipes"), `<a class="circ" href="#meals/add/${r.id}" aria-label="Edit">${icon("edit")}</a>
+      <button class="circ" data-action="recipe-delete" data-id="${r.id}" aria-label="Delete">${icon("x")}</button>`)}
+    <h1 class="head" style="font-size:28px"><b>${esc(r.name)}</b></h1>
     <p class="sub">${r.meal} · serves ${r.serves || 1}${r.protein ? ` · about ${r.protein}g protein per serve` : ""}</p>
-    <div class="row wrap" style="gap:6px;margin-bottom:12px">${r.tags.map((t) => `<span class="pill">${esc(t)}</span>`).join("")}</div>
-    ${flags.length ? `<div class="note">⚠️ Heads up: ${flags.map(esc).join(", ")}</div>` : ""}
-    <div class="card"><h2>Ingredients</h2><ul style="margin:0;padding-left:20px">${r.ingredients.map((i) => `<li>${esc(i)}</li>`).join("")}</ul></div>
-    ${r.method ? `<div class="card"><h2>Method</h2><p style="white-space:pre-line">${esc(r.method)}</p></div>` : ""}
-    ${r.link ? `<a class="btn secondary full" href="${esc(r.link)}" target="_blank" rel="noopener" style="margin-bottom:10px">Open original post ↗</a>` : ""}
-    <div class="row">
-      <a class="btn grow" href="#meals/add/${r.id}">Edit</a>
-      <button class="secondary" data-action="recipe-delete" data-id="${r.id}">Delete</button>
-    </div>
+    <div class="row wrap" style="gap:6px;margin-bottom:12px">${r.tags.map((t) => `<span class="tag">${esc(t)}</span>`).join("")}</div>
+    ${flags.length ? `<div class="note"> Heads up: ${flags.map(esc).join(", ")}</div>` : ""}
+    <div class="card"><p class="label" style="margin-top:0">Ingredients</p><ul style="margin:0;padding-left:20px">${r.ingredients.map((i) => `<li>${esc(i)}</li>`).join("")}</ul></div>
+    ${r.method ? `<div class="card"><p class="label" style="margin-top:0">Method</p><p style="white-space:pre-line">${esc(r.method)}</p></div>` : ""}
+    ${r.link ? `<a class="btn full" href="${esc(r.link)}" target="_blank" rel="noopener">${icon("arrow")} Open original</a>` : ""}
   `;
 }
 
@@ -402,12 +400,12 @@ function recipeScreen(id) {
 function recipeForm(id) {
   const r = findRecipe(id) || { name: "", meal: "dinner", serves: 4, protein: "", tags: [], ingredients: [], method: "", link: "" };
   return `
-    <a class="back" href="${id ? `#recipe/${id}` : "#meals/recipes"}">‹ Back</a>
-    <h1>${id ? "Edit recipe" : "Add a recipe"}</h1>
+    ${topBar(backBtn(id ? `#recipe/${id}` : "#meals/recipes"))}
+    ${headline(id ? "Edit" : "Add a", "recipe")}
     ${id ? "" : `<div class="card soft">
       <label class="field">Paste a recipe (like an Instagram caption)
         <textarea id="r-paste" placeholder="Paste the whole caption here"></textarea></label>
-      <button class="full" data-action="recipe-paste">✨ Fill in from paste</button>
+      <button class="full dark" data-action="recipe-paste">Fill in from paste</button>
       <p class="small muted" style="margin-top:8px">I'll do my best guess. Check the boxes below before saving.</p>
     </div>`}
     <div class="card">
@@ -422,12 +420,12 @@ function recipeForm(id) {
       <label class="field">Method<textarea id="r-method" rows="5">${esc(r.method)}</textarea></label>
       <label class="field">Protein per serve (g)
         <div class="row"><input id="r-protein" type="number" inputmode="numeric" value="${esc(r.protein)}" class="grow">
-          <button class="secondary" data-action="recipe-estimate" style="margin-top:6px">Estimate</button></div></label>
+          <button class="sm" data-action="recipe-estimate" style="margin-top:6px">Estimate</button></div></label>
       <label class="field">Link<input id="r-link" type="url" value="${esc(r.link)}" placeholder="https://"></label>
       <p class="small" style="font-weight:600;margin-bottom:6px">Tags</p>
       ${RECIPE_TAGS.map((t) => `<label class="tagpick"><input type="checkbox" name="r-tag" value="${t}" ${r.tags.includes(t) ? "checked" : ""}> ${t}</label>`).join("")}
     </div>
-    <button class="full" data-action="recipe-save" data-id="${id || ""}">Save recipe</button>
+    <button class="full dark" data-action="recipe-save" data-id="${id || ""}">Save recipe</button>
   `;
 }
 
@@ -437,11 +435,14 @@ function todaysMealsHTML() {
   const plan = mealPlan(mondayOf(today));
   const day = dayName(today);
   const rows = MEAL_SLOTS.map((s) => [s.label, findRecipe(plan[`${day}-${s.id}`])]).filter(([, r]) => r);
-  if (!rows.length) return "";
-  return `<a class="card" href="#meals/plan" style="display:block;text-decoration:none;color:inherit">
-      <div class="row between"><h2>Today's meals 🥗</h2><span class="muted small">Open ›</span></div>
-      ${rows.map(([label, r]) => `<p style="margin:0 0 4px"><span class="muted small">${label}:</span> ${esc(r.name)}</p>`).join("")}
-    </a>`;
+  const dinner = rows.find(([l]) => l === "Dinner");
+  return `<details class="card drop-card">
+      <summary class="li">${icon("food", "tile")}<span class="grow">${dinner ? "Dinner" : "Today's meals"}</span><span class="meta">${rows.length ? esc((dinner || rows[0])[1].name) : "Nothing planned"}</span>${icon("down", "chev")}</summary>
+      <div class="drop-body">
+        ${rows.map(([label, r]) => `<a class="li tight" href="#recipe/${r.id}"><span class="meta" style="width:76px">${label}</span><span class="grow">${esc(r.name)}</span></a>`).join("") || `<p class="small muted" style="margin:0">No meals planned today.</p>`}
+        <a class="btn sm" href="#meals/plan" style="margin-top:8px">Open meal plan</a>
+      </div>
+    </details>`;
 }
 
 SCREENS.meals = mealsScreen;
@@ -460,7 +461,7 @@ Object.assign(ACTIONS, {
     if (Object.keys(mealPlan(monday)).length && !confirm("Replace this week's plan with a surprise one?")) return;
     surpriseWeek(monday);
     saveData();
-    toast("Fresh week planned 🎲");
+    toast("Fresh week planned");
     render();
   },
 
@@ -490,7 +491,7 @@ Object.assign(ACTIONS, {
     const lines = shoppingItems(planMonday())
       .filter((i) => !state.checked[i.key] && (!store || i.store === store))
       .map((i) => i.text);
-    if (!lines.length) return toast("Nothing left to get 🎉");
+    if (!lines.length) return toast("Nothing left to get");
     copyText(lines.join("\n"));
   },
 
@@ -534,7 +535,7 @@ Object.assign(ACTIONS, {
     set("r-link", r.link);
     set("r-serves", r.serves);
     set("r-protein", r.protein || (r.ingredients.length ? estimateProtein(r.ingredients, r.serves || Number(document.getElementById("r-serves").value)) || "" : ""));
-    toast("Filled in. Give it a quick check ✨");
+    toast("Filled in. Give it a quick check");
   },
 
   "recipe-estimate"() {
@@ -564,7 +565,7 @@ Object.assign(ACTIONS, {
     if (old) Object.assign(old, recipe); else data.recipes.push(recipe);
     saveData();
     const flags = foodFlags(recipe);
-    toast(flags.length ? `Saved. Heads up: ${flags[0]}` : "Recipe saved 🥗");
+    toast(flags.length ? `Saved. Heads up: ${flags[0]}` : "Recipe saved");
     location.hash = "#recipe/" + recipe.id;
   },
 

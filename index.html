@@ -11,7 +11,8 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Life Hub">
-  <meta name="theme-color" content="#f6efe4">
+  <meta name="theme-color" content="#dff3ee" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0f1214" media="(prefers-color-scheme: dark)">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="manifest" href="manifest.json">
 
@@ -26,12 +27,10 @@
 
   <!-- The tab bar at the bottom of the screen (easy to reach with your thumb) -->
   <nav class="tabbar" aria-label="Main">
-    <a href="#home" data-tab="home"><span class="ico">🏝️</span><span>Home</span></a>
-    <a href="#fitness" data-tab="fitness"><span class="ico">💪</span><span>Fitness</span></a>
-    <a href="#routines" data-tab="routines"><span class="ico">🌅</span><span>Routines</span></a>
-    <a href="#meals" data-tab="meals"><span class="ico">🥗</span><span>Meals</span></a>
-    <a href="#house" data-tab="house"><span class="ico">🧽</span><span>House</span></a>
-    <a href="#focus" data-tab="focus"><span class="ico">🎯</span><span>Focus</span></a>
+    <a href="#home" data-tab="home"><svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg><span>Today</span></a>
+    <a href="#fitness" data-tab="fitness"><svg viewBox="0 0 24 24"><path d="M6 7v10M18 7v10M3 10v4M21 10v4M6 12h12"/></svg><span>Train</span></a>
+    <a href="#meals" data-tab="meals"><svg viewBox="0 0 24 24"><path d="M7 3v8a2 2 0 0 0 2 2v8M5 3v5M9 3v5M17 21V3c-2 1-3 4-3 7h3"/></svg><span>Food</span></a>
+    <a href="#more" data-tab="more"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/></svg><span>More</span></a>
   </nav>
 
   <script src="data.js"></script>
@@ -42,7 +41,6 @@
   <script src="progress.js"></script>
   <script src="meals.js"></script>
   <script src="house.js"></script>
-  <script src="focus.js"></script>
   <script src="health.js"></script>
 </body>
 </html>

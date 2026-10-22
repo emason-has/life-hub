@@ -86,16 +86,16 @@ function healthScreen() {
   const days = Array.from({ length: 7 }, (_, i) => addDays(todayKey(), -i)).filter((k) => data.health[k]);
   const dash = (v, unit = "") => (v || v === 0) ? `${Number(v).toLocaleString()}${unit}` : "-";
   return `
-    <a class="back" href="#home">‹ Home</a>
-    <h1>Apple Health ❤️</h1>
+    ${topBar(backBtn("#more"))}
+    ${headline("Apple", "Health")}
     <p class="sub">Your watch numbers, pasted in with one tap.</p>
 
-    ${healthDraft ? healthPreviewHTML() : `
-      <button class="full" data-action="health-paste" style="margin-bottom:10px">📋 Paste from Health</button>
-      <button class="full secondary" data-action="health-manual" style="margin-bottom:14px">Type numbers in</button>`}
+    ${healthDraft ? healthPreviewHTML() : `<div class="row" style="gap:8px;margin-bottom:12px">
+      <button class="grow dark" data-action="health-paste">Paste from Health</button>
+      <button class="grow" data-action="health-manual">Type it in</button></div>`}
 
     ${days.length ? `<div class="card">
-      <h2>Last 7 days</h2>
+      <p class="label" style="margin-top:0">Last 7 days</p>
       <div class="health-table">
         <span class="muted small">Day</span><span class="muted small">Steps</span><span class="muted small">Sleep</span><span class="muted small">Rest HR</span>
         ${days.map((k) => { const h = data.health[k]; return `
@@ -107,9 +107,9 @@ function healthScreen() {
       <p class="small muted" style="margin-top:8px">Step goal: ${stepGoal().toLocaleString()} (change it in Settings). Green = goal hit.</p>
     </div>` : ""}
 
-    <details class="card soft" ${data.health && Object.keys(data.health).length ? "" : "open"}>
-      <summary><strong>Set up the Shortcut (once)</strong></summary>
-      ${shortcutGuideHTML()}
+    <details class="card drop-card" ${data.health && Object.keys(data.health).length ? "" : "open"}>
+      <summary class="li">${icon("heart", "tile")}<span class="grow"><strong>Set up the Shortcut</strong><span class="small muted block">Once only</span></span>${icon("down", "chev")}</summary>
+      <div class="drop-body">${shortcutGuideHTML()}</div>
     </details>
   `;
 }
@@ -121,7 +121,7 @@ function healthPreviewHTML() {
   const num = (id, label, value, step) => `<label class="field grow">${label}
       <input id="${id}" type="number" inputmode="decimal" step="${step}" value="${value ?? ""}"></label>`;
   return `<div class="card today">
-      <h2>Check and save</h2>
+      <p class="label" style="margin-top:0">Check and save</p>
       <div class="seg" role="group" aria-label="Which day">
         <button class="${healthDay === "today" ? "on" : ""}" data-action="health-day" data-day="today">Today</button>
         <button class="${healthDay === "yesterday" ? "on" : ""}" data-action="health-day" data-day="yesterday">Yesterday</button>
@@ -132,10 +132,9 @@ function healthPreviewHTML() {
       ${ticks.length ? `<p class="small" style="margin-bottom:4px">Saving will also update:</p>
         <ul class="small" style="margin:0 0 10px;padding-left:20px">${ticks.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>` : ""}
       ${d.workouts && !ticks.length ? `<p class="small muted">I didn't recognise that workout type, so tick it yourself in Fitness. (Tell me its name and I'll teach the app.)</p>` : ""}
-      <p class="small muted">Hitting ${stepGoal().toLocaleString()} steps ticks your daily walk.</p>
       <div class="row">
-        <button class="grow" data-action="health-save">Save</button>
-        <button class="secondary" data-action="health-cancel">Cancel</button>
+        <button class="grow dark" data-action="health-save">Save</button>
+        <button class="grow" data-action="health-cancel">Cancel</button>
       </div>
     </div>`;
 }
@@ -167,10 +166,12 @@ workouts: [Health Samples, from step 6]</pre></li>
 function healthHomeHTML() {
   const h = data.health[todayKey()] || data.health[addDays(todayKey(), -1)];
   const which = data.health[todayKey()] ? "Today" : "Yesterday";
-  return `<div class="card">
-      <div class="row between"><h2>Health ❤️</h2><a class="muted small" href="#health" style="text-decoration:none">Open ›</a></div>
-      ${h ? `<p class="small" style="margin-bottom:10px">${which}: ${h.steps ? `👟 ${Number(h.steps).toLocaleString()} steps` : ""}${h.sleep ? ` · 😴 ${h.sleep}h` : ""}${h.resting ? ` · ❤️ ${h.resting}` : ""}</p>` : ""}
-      <button class="full secondary" data-action="health-paste">📋 Paste from Health</button>
+  return `<div class="card next-card">
+      <span class="wcard-ph sm">${icon("heart")}</span>
+      <div class="grow"><div class="kicker">${h ? which : "Health"}</div>
+        <b>${h && h.steps ? `${Number(h.steps).toLocaleString()} steps` : "No steps yet"}</b>
+        <div class="meta">${h && h.sleep ? `${h.sleep}h sleep` : ""}${h && h.sleep && h.resting ? " · " : ""}${h && h.resting ? `rest HR ${h.resting}` : ""}</div></div>
+      <button class="sm dark" data-action="health-paste">Paste</button>
     </div>`;
 }
 
@@ -213,10 +214,9 @@ Object.assign(ACTIONS, {
     const nums = readHealthInputs();
     data.health[key] = { ...data.health[key], ...nums, workouts: healthDraft.workouts || (data.health[key] || {}).workouts || "" };
     [...new Set(workoutKinds(healthDraft.workouts))].forEach((k) => markWatchSession(key, k));
-    if (nums.steps >= stepGoal()) setTick(key, "daily-walk", true);
     healthDraft = null;
     saveData();
-    toast("Health saved ❤️ " + cheer());
+    toast("Health saved " + cheer());
     render();
   }
 });

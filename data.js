@@ -1,135 +1,11 @@
 // =====================================================================
 // YOUR PLAN CONTENT
-// Everything in this file is the "content" of your plan: workouts, the
-// weekly schedule, phases and habits. To change an exercise, a rep count
-// or a label, change the words here. The rest of the app updates itself.
+// Everything in this file is the "content" of your plan: goals, Tiimo
+// reminders, meals, cleaning, session types and workout templates.
+// Change the words here and the rest of the app updates itself.
 // =====================================================================
 
-// ---------- Workouts ----------
-// sets x reps. "unit" is what the weight box means:
-//   "kg each side" (plates on a bar), "kg" (machine/dumbbell), or "" (no weight).
-// "repsLabel" lets us say "sec" or "steps" instead of reps.
-// "step" is how much to add when you're ready to go up (default 2.5kg).
-// "upper: true" shows the gentle nerve-pain reminder.
-const WORKOUTS = {
-  glutes: {
-    name: "Glutes and legs",
-    day: "Tue",
-    length: "45 min",
-    exercises: [
-      { id: "hip-thrust", name: "Hip thrusts", sets: 4, reps: 10, unit: "kg each side", note: "Start 5-7.5kg each side" },
-      { id: "smith-squat", name: "Smith machine squat", sets: 3, reps: 12, unit: "kg each side", note: "Start 10kg each side" },
-      { id: "db-rdl", step: 1, name: "Dumbbell Romanian deadlift", sets: 3, reps: 10, unit: "kg", note: "Start light. Soft knees, flat back, push hips back" },
-      { id: "bulgarian", step: 1, name: "Bulgarian split squat", sets: 3, reps: 10, unit: "kg", note: "Each leg. Bodyweight is fine to start" },
-      { id: "glute-kickback", name: "Cable glute kickbacks", sets: 3, reps: 12, unit: "kg", note: "Each leg" }
-    ]
-  },
-  back: {
-    name: "Back, triceps and core",
-    day: "Thu",
-    length: "45 min",
-    exercises: [
-      { id: "lat-pulldown", name: "Lat pull-downs", sets: 3, reps: 12, unit: "kg", upper: true },
-      { id: "cable-row", name: "Seated cable rows", sets: 3, reps: 12, unit: "kg", upper: true },
-      { id: "face-pull", name: "Face pulls", sets: 3, reps: 15, unit: "kg", upper: true },
-      { id: "tricep-pushdown", name: "Cable tricep pushdowns", sets: 3, reps: 12, unit: "kg", upper: true },
-      { id: "tricep-kickback", name: "Single-arm cable tricep kickbacks", sets: 3, reps: 12, unit: "kg", note: "Each arm", upper: true },
-      { id: "pallof", name: "Pallof press", sets: 3, reps: 10, unit: "kg", note: "Each side" }
-    ]
-  },
-  legs: {
-    name: "Legs and core",
-    day: "Fri/Sat",
-    length: "45 min",
-    exercises: [
-      { id: "leg-press", name: "Leg press", sets: 3, reps: 12, unit: "kg", note: "Start 40-45kg" },
-      { id: "step-ups", step: 1, name: "Step-ups", sets: 3, reps: 10, unit: "kg", note: "Each leg" },
-      { id: "lateral-walks", name: "Banded lateral walks", sets: 3, reps: 15, unit: "", repsLabel: "steps" },
-      { id: "ham-curl", name: "Hamstring curls", sets: 3, reps: 12, unit: "kg" },
-      { id: "side-plank", name: "Side planks", sets: 3, reps: 30, unit: "", repsLabel: "sec", note: "Each side" }
-    ]
-  },
-  home: {
-    name: "Home session",
-    day: "Wed",
-    length: "20-25 min",
-    kit: "Dumbbells, mini leg bands, long resistance bands, mat",
-    // The home session is done by time blocks, so it's a simple checklist.
-    blocks: [
-      { id: "home-glutes", name: "Glutes with leg bands", mins: 8, moves: "Glute bridges, clams, lateral walks, donkey kicks" },
-      { id: "home-core", name: "Pilates core", mins: 7, moves: "Dead bugs, the hundred, single-leg stretch, bird dogs" },
-      { id: "home-arms", name: "Back and arms with long band", mins: 3, moves: "Light pull-aparts, rows, tricep pushdowns", upper: true },
-      { id: "home-yoga", name: "Yoga cool-down", mins: 5, moves: "Child's pose, pigeon, cat-cow" }
-    ]
-  }
-};
-
 const UPPER_BODY_NOTE = "Start light. Stop if arm nerve pain flares.";
-
-// ---------- Weekly plan ----------
-// Each day has tick boxes. "kind" decides what a tick counts towards:
-//   gym, surf, home, run, light (optional yoga/walk/Pilates), rest, chore
-// "workout" links a tick to a workout above so you can open it.
-const WEEK_PLAN = [
-  { day: "Mon", title: "Reset day", items: [
-    { id: "mon-prep", label: "Meal prep (if missed Sunday)", kind: "chore" },
-    { id: "mon-light", label: "Optional: 15 min yoga, walk or Goodlife Pilates", kind: "light" }
-  ]},
-  { day: "Tue", title: "Gym: glutes and legs", items: [
-    { id: "tue-gym", label: "Gym: glutes and legs (45 min)", kind: "gym", workout: "glutes" }
-  ]},
-  { day: "Wed", title: "Run + home session", items: [
-    { id: "wed-run", label: "Run", kind: "run" },
-    { id: "wed-home", label: "Home session (20-25 min)", kind: "home", workout: "home" }
-  ]},
-  { day: "Thu", title: "Gym: back, triceps and core", items: [
-    { id: "thu-gym", label: "Gym: back, triceps and core (45 min)", kind: "gym", workout: "back" },
-    { id: "thu-tidy", label: "Quick house tidy", kind: "chore" }
-  ]},
-  { day: "Fri", title: "Surf or gym", items: [
-    { id: "fri-surf", label: "Surf (summer)", kind: "surf" },
-    { id: "fri-gym", label: "Or gym: legs and core", kind: "gym", workout: "legs" }
-  ]},
-  { day: "Sat", title: "Surf or easy run", items: [
-    { id: "sat-surf", label: "Surf", kind: "surf" },
-    { id: "sat-run", label: "Or easy run", kind: "run" },
-    { id: "sat-legs", label: "Legs and core (if Fri was a surf)", kind: "gym", workout: "legs" }
-  ]},
-  { day: "Sun", title: "Surf or rest + shop and prep", items: [
-    { id: "sun-surf", label: "Surf", kind: "surf" },
-    { id: "sun-rest", label: "Or rest day", kind: "rest" },
-    { id: "sun-shop", label: "Food shop", kind: "chore" },
-    { id: "sun-prep", label: "Meal prep", kind: "chore" }
-  ]}
-];
-
-// Every day also gets this option. It counts as a workout.
-const LOW_ENERGY = { id: "low-energy", label: "Low energy: 10 min yoga or Pilates", kind: "low" };
-
-// ---------- Phases ----------
-// Each phase adds habits. Habits with "days" only show on those days.
-// A habit can share its id with a weekly-plan tick (like "sun-prep"),
-// so ticking it in one place ticks it in the other.
-const PHASES = [
-  { num: 1, weeks: "Weeks 1-2", name: "Wake-up shift + 3 workouts a week",
-    habits: [
-      { id: "woke-on-time", label: "Woke up at my target time" }
-    ]},
-  { num: 2, weeks: "Weeks 3-4", name: "Add Sunday meal prep + morning routine",
-    habits: [
-      { id: "sun-prep", label: "Sunday meal prep", days: ["Sun"] },
-      { id: "morning-routine", label: "Morning routine" }
-    ]},
-  { num: 3, weeks: "Weeks 5-6", name: "Add Thursday clean + House tab",
-    habits: [
-      { id: "thu-tidy", label: "Thursday clean", days: ["Thu"] }
-    ]},
-  { num: 4, weeks: "Week 7 onwards", name: "Add Saves, brain dump and focus timer",
-    habits: [
-      { id: "brain-dump", label: "Quick brain dump" },
-      { id: "focus-sprint", label: "One focus sprint" }
-    ]}
-];
 
 // ---------- Wake-up plan ----------
 // Starts at 6:45 and steps 15 min earlier each week until 6:15.
@@ -153,60 +29,8 @@ const CHEERS = [
 
 
 // =====================================================================
-// STAGE 2: ROUTINES
+// TIIMO REMINDERS (shown under More)
 // =====================================================================
-
-// "{wake}" gets swapped for this week's wake-up target time.
-// Items that share an id with a habit (like "woke-on-time") tick both at once.
-const MORNING = [
-  { id: "woke-on-time", label: "Wake up by {wake}" },
-  { id: "am-ready", label: "Get ready" },
-  { id: "am-oats", label: "Breakfast: protein oats (backup: Up&Go protein)" },
-  { id: "posture-routine", label: "5 min posture routine" },
-  { id: "am-leave", label: "Leave by 7:10" }
-];
-
-const EVENING = [
-  { id: "pm-bag", label: "Prep bag and lunch" },
-  { id: "pm-gear", label: "Lay out gym gear" },
-  { id: "pm-screens", label: "Screens off" },
-  { id: "bed-on-time", label: "In bed by 10:15" }
-];
-
-const DAILY_HABITS = [
-  { id: "protein-meals", label: "Protein with each meal" },
-  { id: "daily-walk", label: "Daily walk" },
-  { id: "woke-on-time", label: "Woke up on time" },
-  { id: "bed-on-time", label: "In bed on time" },
-  { id: "posture-routine", label: "Posture routine" }
-];
-
-// Posture: 5 min home routine (for shoulders that roll forward at a desk).
-const POSTURE_HOME = [
-  { id: "pos-pullaparts", name: "Band pull-aparts", time: "1 min", how: "Arms straight out in front, pull the band apart until it touches your chest. Squeeze shoulder blades. 15 slow reps." },
-  { id: "pos-doorway", name: "Doorway chest stretch", time: "1 min", how: "Forearms on the door frame at shoulder height, step one foot through until you feel a stretch across your chest. 30 sec, twice." },
-  { id: "pos-chintucks", name: "Chin tucks", time: "1 min", how: "Sit or stand tall, slide your chin straight back (make a double chin), hold 3 sec. 10 reps." },
-  { id: "pos-towel", name: "Upper back over a rolled towel", time: "2 min", how: "Lie on your back with a rolled towel across your upper back, under your shoulder blades. Arms out wide or overhead, breathe and relax." }
-];
-
-// Tiny posture resets at work, tied to things you already do.
-const POSTURE_WORK = [
-  { id: "work-arrive", when: "When you arrive", what: "Set up your chair and screen. Shoulders down and back, 5 chin tucks." },
-  { id: "work-break", when: "On water or bathroom breaks", what: "Roll your shoulders back 5 times and stand tall for 3 deep breaths." },
-  { id: "work-lunch", when: "Before lunch", what: "Doorway or desk-edge chest stretch, 30 sec each side." },
-  { id: "work-leave", when: "Before leaving", what: "Squeeze your shoulder blades together 10 times, then a big stretch overhead." }
-];
-
-// Sunday reset (about 10 min).
-const SUNDAY_RESET = [
-  { id: "sun-tidy", label: "Quick tidy" },
-  { id: "sun-gear", label: "Gym gear out for the week" },
-  { id: "sun-groceries", label: "Grocery list done, or groceries ordered online" },
-  { id: "sun-freezer", label: "Freezer has a \"rough Monday\" meal" }
-];
-
-// Reminders to set up in Tiimo. Change any time or wording here.
-// "{wake}" gets swapped for this week's wake-up target.
 const TIIMO = [
   { id: "t-wake", title: "Wake up", time: "{wake}", days: "Every day" },
   { id: "t-leave", title: "Leave for work", time: "7:10am", days: "Mon to Fri" },
@@ -385,16 +209,18 @@ const FREQUENCIES = [
 // =====================================================================
 
 // The kinds of session a day can have. "strength" ones count toward your
-// weekly strength target.
+// weekly strength target. "care" sessions (posture) are always optional
+// and never count as missed.
 const SESSION_TYPES = {
-  "full-gym":   { label: "Full gym", emoji: "🏋️", strength: true, mins: 45 },
-  "short-gym":  { label: "Short gym (20-25 min)", emoji: "⏱️", strength: true, mins: 25 },
-  "home":       { label: "Home workout", emoji: "🏠", mins: 25 },
-  "light-home": { label: "Light home (15 min)", emoji: "🌱", mins: 15 },
-  "run":        { label: "Run", emoji: "🏃‍♀️", mins: 30 },
-  "surf":       { label: "Surf", emoji: "🏄‍♀️", mins: 60 },
-  "pilates":    { label: "Pilates / yoga", emoji: "🧘‍♀️", mins: 30 },
-  "rest":       { label: "Rest", emoji: "🌴", mins: 0 }
+  "full-gym":   { label: "Full gym", icon: "dumbbell", strength: true, mins: 45 },
+  "short-gym":  { label: "Short gym", icon: "timer", strength: true, mins: 25 },
+  "home":       { label: "Home workout", icon: "house", mins: 25 },
+  "light-home": { label: "Light home", icon: "leaf", mins: 15 },
+  "run":        { label: "Run", icon: "run", mins: 30 },
+  "surf":       { label: "Surf", icon: "wave", mins: 60 },
+  "pilates":    { label: "Pilates / yoga", icon: "lotus", mins: 30 },
+  "posture":    { label: "Posture & arm care", icon: "posture", mins: 10, care: true },
+  "rest":       { label: "Rest", icon: "moon", mins: 0 }
 };
 
 // Your workouts as templates: ex = exercise id (see exercises.js),
@@ -463,6 +289,14 @@ const DEFAULT_TEMPLATES = [
     { ex: "band-pushdown", sets: 3, reps: 15, rest: 45 },
     { ex: "close-pushup", sets: 2, reps: 8, rest: 45 }
   ]},
+  { id: "t-posture", name: "Posture & arm care", type: "posture", exercises: [
+    { ex: "band-pull-apart", sets: 2, reps: 15, rest: 30 },
+    { ex: "face-pull", sets: 2, reps: 15, rest: 30 },
+    { ex: "chin-tucks", sets: 1, reps: 10, rest: 0 },
+    { ex: "doorway-stretch", sets: 2, reps: 30, rest: 0 },
+    { ex: "towel-thoracic", sets: 1, reps: 90, rest: 0 },
+    { ex: "cat-cow", sets: 1, reps: 10, rest: 0 }
+  ]},
   { id: "t-pilates", name: "Pilates core & stretch", type: "pilates", exercises: [
     { ex: "dead-bug", sets: 2, reps: 10, rest: 20 },
     { ex: "hundred", sets: 1, reps: 100, rest: 20 },
@@ -511,6 +345,8 @@ const MUSCLE_GROUPS = [
   { id: "triceps", label: "Triceps", word: "Tricep", color: "#7cc6be" },
   { id: "core", label: "Core", word: "Core", color: "#9b8ec4" },
   { id: "shoulders", label: "Shoulders", word: "Shoulder", color: "#6cc4a1" },
+  { id: "chest", label: "Chest", word: "Chest", color: "#d98fa8" },
+  { id: "arms", label: "Biceps & forearms", word: "Arm", color: "#8fb3d9" },
   { id: "mobility", label: "Mobility", word: "Mobility", color: "#b9a68c" }
 ];
 
