@@ -35,6 +35,7 @@ function blankData() {
     feelings: [],     // [ { date, energy, notes } ]
     tiimoAdded: {},   // { "t-bed": true, "t-wake": "6:30am" }  (reminders already set up in Tiimo)
     recipes: JSON.parse(JSON.stringify(STARTER_RECIPES)),  // your recipe library
+    saves: [],        // Instagram saved posts (see saves.js)
     mealPlans: {},    // { "2026-10-26": { "Mon-dinner": "r-pasta", ... } }  (keyed by the Monday)
     shopping: {},     // { "2026-10-26": { checked: { "oat": true }, extras: ["Coffee pods"] } }
     storeFor: {},     // { "protein powder": "Woolworths" }  (remembered store for each item)
@@ -219,7 +220,7 @@ function render() {
   document.getElementById("app").innerHTML = draw(...rest) + (quickOpen ? quickAddHTML() : "");
   // Screens that live under another tab (a workout is part of Train, etc.)
   const parentTab = { session: "fitness", tpl: "fitness", ex: "fitness", pickex: "fitness", train: "fitness", wlog: "fitness",
-    recipe: "meals", pick: "meals", settings: "more", health: "more", house: "more", tiimo: "more" };
+    recipe: "meals", pick: "meals", settings: "more", health: "more", house: "more", tiimo: "more", saves: "more" };
   const tab = parentTab[screen] || (SCREENS[screen] ? screen : "home");
   document.querySelectorAll(".tabbar a").forEach((a) => a.classList.toggle("on", a.dataset.tab === tab));
   // Keep the chosen chip in view when a chip row is wider than the screen.
@@ -364,6 +365,7 @@ function moreScreen() {
     ${headline("Everything", "else")}
     <div class="card list-card">
       ${row("#house", "sponge", "House", due ? `${due} due` : "All good")}
+      ${row("#saves", "star", "Saves", (data.saves || []).length ? `${data.saves.filter((s) => !s.done).length} to look at` : "Import")}
       ${row("#fitness/progress/body", "chart", "Body & measurements")}
       ${row("#health", "heart", "Apple Health")}
       ${row("#tiimo", "bell", "Tiimo reminders")}

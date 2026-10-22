@@ -426,3 +426,16 @@ input[type="date"] { min-height: 48px; }
 
 /* Shopping and picker rows use a "label" span too: keep it as normal text */
 .tick .label { display: block; margin: 0; font-size: 16px; font-weight: 500; letter-spacing: normal; text-transform: none; color: var(--ink); }
+
+/* Saves */
+.save-row { gap: 12px; }
+.save-row.done { opacity: 0.55; }
+.save-txt { min-width: 0; color: var(--ink); text-decoration: none; display: flex; flex-direction: column; gap: 2px; }
+.save-txt .small { display: flex; align-items: center; gap: 4px; }
+.save-txt .small .i { width: 14px; height: 14px; }
+.save-title { font-weight: 600; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.save-flag { color: var(--amber); font-weight: 600; }
+a.next-card { color: var(--ink); text-decoration: none; }
+.save-head { margin: 4px 0 12px; line-height: 1.25; }
+.save-caption { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; font-size: 15px; line-height: 1.5; }
+.next-card b.save-title { display: -webkit-box; font-size: 16px; }
