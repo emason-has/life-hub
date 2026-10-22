@@ -416,9 +416,11 @@ a.next-card { color: var(--ink); text-decoration: none; }
 .sec-head { margin: 18px 4px 8px; display: flex; justify-content: space-between; align-items: baseline; }
 .thought { align-items: flex-start; gap: 12px; }
 .thought .circle-tick { margin-top: 2px; }
-.thought.done .grow { text-decoration: line-through; color: var(--muted); }
+.thought.done .thought-text { text-decoration: line-through; color: var(--muted); }
+.thought .grow { padding: 2px 0; }
+.plain-link { text-decoration: none; }
 .thought .chip { min-height: 30px; padding: 0 12px; font-size: 13px; }
 .thought .small .i, .review-card .i { width: 14px; height: 14px; vertical-align: -2px; color: var(--amber); }
 .review-card { padding: 26px 20px; text-align: center; }
 .review-text { font-size: 22px; font-weight: 600; line-height: 1.3; margin-bottom: 8px; }
-textarea#dump-text { width: 100%; }
+textarea#dump-text { width: 100%; resize: none; }

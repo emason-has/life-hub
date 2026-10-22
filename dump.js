@@ -85,7 +85,7 @@ function thoughtRow(t, moves) {
   const done = t.status === "done";
   return `<div class="li thought ${done ? "done" : ""}">
       <button class="circle-tick ${done ? "on" : ""}" data-action="dump-done" data-id="${t.id}" aria-label="Done">${done ? icon("check") : ""}</button>
-      <span class="grow">${esc(t.text)}
+      <span class="grow"><span class="thought-text">${esc(t.text)}</span>
         <span class="small muted block">${isQuick(t.text) && !done ? `${icon("bolt")} Quick win · ` : ""}${done ? `Done ${niceDate(t.doneOn)}` : `Added ${niceDate(t.added)}`}</span>
         ${moves.length ? `<span class="row" style="gap:6px;margin-top:6px">${moves.map((m) => `<button class="chip" data-action="dump-move" data-id="${t.id}" data-to="${m}">${label[m]}</button>`).join("")}</span>` : ""}
       </span>
@@ -150,7 +150,7 @@ function dumpHomeHTML() {
   return `<div class="card">
       <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:6px">
         <p class="label" style="margin:0">This week's focus</p>
-        <a class="small muted" href="#dump">${inbox.length ? `${inbox.length} to sort` : "Brain dump"} ›</a>
+        <a class="small muted plain-link" href="#dump">${inbox.length ? `${inbox.length} to sort` : "Brain dump"} ›</a>
       </div>
       ${week.length ? `<div class="list-card">${week.map((t) => `<div class="li tight">
           <button class="circle-tick" data-action="dump-done" data-id="${t.id}" aria-label="Done"></button>
