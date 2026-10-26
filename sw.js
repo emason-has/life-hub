@@ -3,7 +3,7 @@
 //
 // When you change any app file later, bump the version number below
 // (v1 -> v2) so phones know to grab the fresh copy.
-const CACHE = "life-hub-v16";
+const CACHE = "life-hub-v17";
 
 const FILES = [
   "./",
@@ -19,6 +19,7 @@ const FILES = [
   "./house.js",
   "./health.js",
   "./dump.js",
+  "./surf.js",
   "./manifest.json",
   "./icon-192.png",
   "./icon-512.png",
@@ -149,6 +150,7 @@ self.addEventListener("activate", (event) => {
 // and fall back to the saved copy when you're offline.
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
+  if (event.request.url.includes("open-meteo.com")) return;   // surf forecast: always live, never cached here
   event.respondWith(
     fetch(event.request)
       .then((res) => {

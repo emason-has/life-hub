@@ -429,6 +429,7 @@ function fitnessPlanScreen(mondayArg) {
       <summary class="li">${icon("chart", "tile")}<span class="grow"><strong>${score.summary}</strong>${score.win ? `<span class="small muted block">Week won</span>` : ""}</span>${icon("down", "chev")}</summary>
       <div class="drop-body">${weekCheckHTML(monday)}</div>
     </details>
+    ${surfCardHTML()}
   `;
 }
 
@@ -1034,7 +1035,12 @@ function toggleIn(list, item) {
 document.addEventListener("change", (e) => {
   const el = e.target;
   if (el.dataset.sessTpl) {
-    changeSession(el.dataset.sessTpl, ({ s }) => { s.tpl = el.value || null; });
+    // A workout brings its own type, so a Run changed to a gym workout counts as gym.
+    changeSession(el.dataset.sessTpl, ({ s }) => {
+      s.tpl = el.value || null;
+      const t = tplById(s.tpl);
+      if (t && t.type) s.type = t.type;
+    });
     render();
   }
   if (el.dataset.sessMove) moveSession(el.dataset.sessMove, el.value);

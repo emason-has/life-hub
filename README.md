@@ -9,7 +9,7 @@ no login, no paid services.
 | --- | --- |
 | `index.html` | The page itself: the frame and the bottom tab bar. |
 | `styles.css` | The look: colours, sizes, rounded cards. Colours are at the top. |
-| `data.js` | **My plan content.** Workout templates (including Posture & arm care), goals, Tiimo times, starter recipes, staples, cleaning jobs. Edit words here to change the plan. |
+| `data.js` | **My plan content.** Workout templates (including Posture & arm care), goals, starter recipes, staples, cleaning jobs. Edit words here to change the plan. |
 | `exercises.js` + `ex-img/` | Exercise library and form photos (from the public domain free-exercise-db, github.com/yuhonas/free-exercise-db). Cues written for Life Hub. |
 | `fitness.js` | Fitness tab: Plan my week, sessions, templates, exercise library. |
 | `workout.js` | Workout mode in the gym: sets, rest timer, personal bests, history. |
@@ -18,6 +18,7 @@ no login, no paid services.
 | `house.js` | House (under More): jobs due this week, swipe to Later, 15-minute blitz. |
 | `health.js` | Apple Health: the "Paste from Health" button and Shortcut setup guide. |
 | `dump.js` | Brain dump (under More, optional Home widget): get thoughts out fast, sort them on Sunday, keep a done log. |
+| `surf.js` | Surf suggestions for Trigg, Scarborough and Mullaloo from the free Open-Meteo forecast (Train > Week, optional Home widget). |
 | `meals.js` | Everything for the Food tab: recipes, planner, Surprise me, shopping list. |
 | `manifest.json` | Tells the iPhone this is an app (name, icon, colours). |
 | `sw.js` | The offline helper. Keeps a copy of the app on the phone. |

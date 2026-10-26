@@ -3,10 +3,10 @@
 // Sections:
 //   1. Saving and loading your data (stays on your phone)
 //   2. Date helpers
-//   3. Your programme (week number, Tiimo wake-up time)
+//   3. Your programme (week number)
 //   4. Ticks (kept for older saved data)
 //   5. Line chart (used by the Train charts)
-//   6. Screens (icons, Home widgets, More, Body, Settings, Tiimo)
+//   6. Screens (icons, Home widgets, More, Body, Settings)
 //   7. Buttons: what happens when you tap things
 //   8. Backup: export and import
 //   9. Start the app
@@ -33,12 +33,12 @@ function blankData() {
     measurements: [], // [ { date, waist, hips, weight } ]
     photos: [],       // [ "2026-10-20" ]  (just the dates; photos stay in your Photos app)
     feelings: [],     // [ { date, energy, notes } ]
-    tiimoAdded: {},   // { "t-bed": true, "t-wake": "6:30am" }  (reminders already set up in Tiimo)
     recipes: JSON.parse(JSON.stringify(STARTER_RECIPES)),  // your recipe library
     dump: [],         // brain dump thoughts (see dump.js)
     mealPlans: {},    // { "2026-10-26": { "Mon-dinner": "r-pasta", ... } }  (keyed by the Monday)
     shopping: {},     // { "2026-10-26": { checked: { "oat": true }, extras: ["Coffee pods"] } }
     storeFor: {},     // { "protein powder": "Woolworths" }  (remembered store for each item)
+    otherShop: [],    // non-food shopping: { id, text, store, got }  (not tied to a week)
     staples: STAPLES.slice(),
     chores: CLEANING_TASKS.map((c) => ({ ...c, lastDone: null })),  // cleaning tasks + when last done
     seenStarters: STARTER_RECIPES.map((r) => r.id),  // starter recipes already offered (so deleted ones stay deleted)
@@ -114,10 +114,6 @@ function weekNumber(key = todayKey()) {
   return Math.max(1, Math.floor(daysBetween(data.settings.startDate, key) / 7) + 1);
 }
 
-// This week's wake-up target for Tiimo: 6:45, then 6:30, then 6:15 and stays there.
-function wakeTarget(key = todayKey()) {
-  return WAKE_TIMES[Math.min(weekNumber(key) - 1, WAKE_TIMES.length - 1)];
-}
 
 
 // ---------- 4. Ticks ----------
@@ -213,8 +209,7 @@ let quickOpen = false;     // the + menu
 const SCREENS = {
   home: homeScreen,
   more: moreScreen,
-  settings: settingsScreen,
-  tiimo: tiimoScreen
+  settings: settingsScreen
 };
 
 function render() {
@@ -223,7 +218,7 @@ function render() {
   document.getElementById("app").innerHTML = draw(...rest) + (quickOpen ? quickAddHTML() : "");
   // Screens that live under another tab (a workout is part of Train, etc.)
   const parentTab = { session: "fitness", tpl: "fitness", ex: "fitness", pickex: "fitness", train: "fitness", wlog: "fitness",
-    recipe: "meals", pick: "meals", settings: "more", health: "more", house: "more", tiimo: "more", dump: "more" };
+    recipe: "meals", pick: "meals", settings: "more", health: "more", house: "more", dump: "more" };
   const tab = parentTab[screen] || (SCREENS[screen] ? screen : "home");
   document.querySelectorAll(".tabbar a").forEach((a) => a.classList.toggle("on", a.dataset.tab === tab));
   // Keep the chosen chip in view when a chip row is wider than the screen.
@@ -304,7 +299,8 @@ function weekWidgetHTML() {
 function shoppingWidgetHTML() {
   const monday = planMonday();
   const state = shopState(monday);
-  const items = shoppingItems(monday).filter((i) => !state.checked[i.key]);
+  const items = [...shoppingItems(monday).filter((i) => !state.checked[i.key]),
+    ...otherShop().filter((o) => !o.got).map((o) => ({ text: `${o.text} (${o.store})` }))];
   return `<details class="card drop-card">
       <summary class="li">${icon("cart", "tile")}<span class="grow">Shopping list</span><span class="num">${items.length}</span>${icon("down", "chev")}</summary>
       <div class="drop-body small">${items.slice(0, 8).map((i) => esc(i.text)).join("<br>") || "All done"}${items.length > 8 ? `<br><span class="muted">+${items.length - 8} more</span>` : ""}
@@ -372,7 +368,6 @@ function moreScreen() {
       ${row("#house", "sponge", "House", due ? `${due} due` : "All good")}
       ${row("#fitness/progress/body", "chart", "Body & measurements")}
       ${row("#health", "heart", "Apple Health")}
-      ${row("#tiimo", "bell", "Tiimo reminders")}
     </div>
     <div class="card list-card">
       ${row("#settings", "gear", "Settings & backup")}
@@ -482,42 +477,17 @@ function settingsScreen() {
     <div class="card">
       <p class="label" style="margin-top:0">Dates</p>
       <label class="field">Bali trip date<input type="date" data-setting="baliDate" value="${s.baliDate}"></label>
-      <label class="field">Programme start (for Tiimo wake-up times)<input type="date" data-setting="startDate" value="${s.startDate}"></label>
+      <label class="field">Programme start (for your streak)<input type="date" data-setting="startDate" value="${s.startDate}"></label>
       <label class="field" style="margin-bottom:0">Daily step goal<input type="number" inputmode="numeric" data-setting="stepGoal" value="${s.stepGoal || 8000}"></label>
     </div>
 
-    ${targetsSettingsHTML()}
-  `;
-}
-
-// The Tiimo list. Ticking "Added to Tiimo" is remembered (not daily).
-// For the wake-up reminder we remember the time, so it un-ticks when the time changes.
-function withWake(text, key = todayKey()) {
-  return text.replace("{wake}", wakeTarget(key) + "am");
-}
-function tiimoText(t) {
-  return `${t.title}: ${withWake(t.time)} (${t.days})`;
-}
-
-function tiimoScreen() {
-  const now = wakeTarget() + "am";
-  return `
-    ${topBar(backBtn("#more"))}
-    ${headline("Tiimo", "reminders")}
-    <p class="sub">Set these up in Tiimo once. Tap one when it's in.</p>
-    <div class="card list-card">
-    ${TIIMO.map((t) => {
-      const saved = data.tiimoAdded[t.id];
-      const added = t.id === "t-wake" ? saved === now : !!saved;
-      const outdated = t.id === "t-wake" && saved && saved !== now;
-      return `<button class="li" data-action="tiimo" data-id="${t.id}">
-          <span class="circle-tick ${added ? "on" : ""}">${added ? icon("check") : ""}</span>
-          <span class="grow">${esc(t.title)}<span class="small muted block">${esc(t.days)}${outdated ? ` · update to ${now}` : ""}</span></span>
-          <span class="tag">${esc(withWake(t.time))}</span>
-        </button>`;
-    }).join("")}
+    <div class="card">
+      <p class="label" style="margin-top:0">Food</p>
+      <label class="field" style="margin-bottom:4px">Daily protein goal (g)<input type="number" inputmode="numeric" data-setting="proteinGoal" value="${s.proteinGoal || ""}" placeholder="e.g. 110"></label>
+      <p class="small muted" style="margin:0">A good aim is 1.6 to 2g per kg of body weight. At 65kg that's about 105 to 130g.</p>
     </div>
-    <button class="full" data-action="copy-tiimo">Copy list as text</button>
+
+    ${targetsSettingsHTML()}
   `;
 }
 
@@ -610,15 +580,6 @@ const ACTIONS = {
     saveData();
     render();
   },
-
-  tiimo({ id }) {
-    if (data.tiimoAdded[id] && !(id === "t-wake" && data.tiimoAdded[id] !== wakeTarget() + "am")) delete data.tiimoAdded[id];
-    else data.tiimoAdded[id] = id === "t-wake" ? wakeTarget() + "am" : true;
-    saveData();
-    render();
-  },
-
-  "copy-tiimo"() { copyText(TIIMO.map(tiimoText).join("\n")); },
 
   export() { exportBackup(); },
   import() { document.getElementById("import-file").click(); }

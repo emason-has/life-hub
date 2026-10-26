@@ -91,6 +91,18 @@ function addToWorkout(ex) {
   location.hash = "#train";
 }
 
+// The session type a finished workout should count as, if it was a lifting session:
+// its workout's own type, or gym when 6+ sets of non-core lifting were ticked.
+function liftingType(wk) {
+  const t = tplById(wk.tpl);
+  if (t && typeInfo(t.type).strength) return t.type;
+  const sets = wk.exercises.reduce((n, e) => {
+    const g = (exById(e.ex) || { groups: [] }).groups[0];
+    return n + (["core", "mobility", "cardio"].includes(g) ? 0 : doneSets(e).length);
+  }, 0);
+  return sets >= 12 ? "full-gym" : sets >= 6 ? "short-gym" : null;
+}
+
 function finishWorkout() {
   const f = fit();
   const a = f.active;
@@ -104,10 +116,16 @@ function finishWorkout() {
   f.workouts.push(wk);
   wk.exercises.forEach((e) => { if (doneSets(e).length) delete f.bump[e.ex]; });
   f.active = null;
+  const lifted = liftingType(wk);
   if (a.sid && findSession(a.sid)) {
-    changeSession(a.sid, ({ s }) => { s.status = "done"; s.workoutId = wk.id; });
+    changeSession(a.sid, ({ s }) => {
+      s.status = "done"; s.workoutId = wk.id;
+      // Logged a real lifting session on a walk, run, surf, rest or posture day? Count it as gym.
+      const info = typeInfo(s.type);
+      if (lifted && (info.cardio || info.care || s.type === "rest")) s.type = lifted;
+    });
   } else {
-    const s = addSession(wk.date, newSession("full-gym", wk.tpl, wk.date));
+    const s = addSession(wk.date, newSession(lifted || "full-gym", wk.tpl, wk.date));
     s.status = "done"; s.workoutId = wk.id; s.planned = null;
   }
   celebrateNext = wk.exercises.some((e) => e.sets.some((s) => s.pb));
@@ -488,3 +506,18 @@ document.addEventListener("change", (e) => {
   saveData();
   toast("Saved");
 });
+
+// One-off repair: gym workouts logged on a session that was still a run, walk,
+// surf, rest or posture day were counted as that. Count them as gym instead.
+(function repairLoggedTypes() {
+  const f = fit();
+  if (f.typesFixed) return;
+  Object.values(f.weeks).forEach((w) => Object.values(w.days).forEach((list) => list.forEach((s) => {
+    const wk = s.status === "done" && s.workoutId && workoutById(s.workoutId);
+    const info = typeInfo(s.type);
+    const lifted = wk && liftingType(wk);
+    if (lifted && (info.cardio || info.care || s.type === "rest")) s.type = lifted;
+  })));
+  f.typesFixed = true;
+  saveData();
+})();

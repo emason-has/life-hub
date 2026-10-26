@@ -418,9 +418,31 @@ a.next-card { color: var(--ink); text-decoration: none; }
 .thought .circle-tick { margin-top: 2px; }
 .thought.done .thought-text { text-decoration: line-through; color: var(--muted); }
 .thought .grow { padding: 2px 0; }
+.thought-text { display: block; outline: none; border-radius: 6px; }
+.thought-text:focus { background: var(--mint-soft); box-shadow: 0 0 0 4px var(--mint-soft); }
 .plain-link { text-decoration: none; }
 .thought .chip { min-height: 30px; padding: 0 12px; font-size: 13px; }
 .thought .small .i, .review-card .i { width: 14px; height: 14px; vertical-align: -2px; color: var(--amber); }
 .review-card { padding: 26px 20px; text-align: center; }
 .review-text { font-size: 22px; font-weight: 600; line-height: 1.3; margin-bottom: 8px; }
 textarea#dump-text { width: 100%; resize: none; }
+
+/* Food check */
+.check-list { list-style: none; margin: 10px 0 0; padding: 0; }
+.check-list li { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 8px; font-size: 15px; line-height: 1.35; }
+.check-list li:last-child { margin-bottom: 0; }
+.check-list .i { flex: none; width: 16px; height: 16px; margin-top: 2px; color: var(--mint); }
+.check-list .i.warn { color: var(--amber); }
+.pick-list .tick { width: 100%; }
+#quick-name { min-width: 0; }
+
+/* Behind the iPhone clock and battery: a soft frosted strip so text
+   scrolling up doesn't run into the status bar. */
+body::before {
+  content: ""; position: fixed; top: 0; left: 0; right: 0; z-index: 40; pointer-events: none;
+  height: env(safe-area-inset-top);
+  background: rgba(205, 238, 230, 0.82);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+}
+.quick-add { display: grid; gap: 8px; margin-top: 10px; }
+.quick-add input { margin: 0; }

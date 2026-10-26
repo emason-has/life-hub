@@ -27,17 +27,15 @@ function isQuick(text) {
   return /^(call|ring|text|email|reply|book|pay|cancel|renew|message)\b/i.test(text.trim()) && text.trim().split(/\s+/).length <= 8;
 }
 
-// Splits what you typed or said into separate thoughts: one per line,
-// or "and then" / full stops when it's one long spoken sentence.
+// One thought per line. Sentences on the same line stay together.
 function splitThoughts(text) {
-  return text.split(/\n|\.\s+|;\s*|,?\s+and then\s+/i).map((t) => t.trim().replace(/\.$/, "")).filter((t) => t.length > 1);
+  return text.split("\n").map((t) => t.trim()).filter((t) => t.length > 1);
 }
 
 // Adds thoughts, skipping any you already have that aren't done.
-// From Reminders each line is one thought, so only split on new lines.
-function addThoughts(text, linesOnly) {
+function addThoughts(text) {
   const have = new Set(dump().filter((t) => t.status !== "done").map((t) => t.text.toLowerCase()));
-  const items = (linesOnly ? text.split("\n").map((t) => t.trim()).filter(Boolean) : splitThoughts(text))
+  const items = splitThoughts(text)
     .map((t) => t.charAt(0).toUpperCase() + t.slice(1)).filter((t) => !have.has(t.toLowerCase()));
   items.forEach((t, i) => dump().push({ id: "d" + Date.now().toString(36) + i, text: t, added: todayKey(), status: "inbox" }));
   saveData();
@@ -65,7 +63,7 @@ function resetDue() {
 function dumpScreen(sub, arg) {
   if (sub === "in") {
     // Came from the Sunday Shortcut with your Reminders: add them, then sort.
-    const n = arg ? addThoughts(decodeURIComponent(arg), true) : 0;
+    const n = arg ? addThoughts(decodeURIComponent(arg)) : 0;
     history.replaceState(null, "", "#dump/review");
     setTimeout(() => toast(n ? `${n} brought in from Reminders` : "Nothing new in Reminders"), 50);
     return reviewScreen();
@@ -109,7 +107,7 @@ function thoughtRow(t, moves) {
   const done = t.status === "done";
   return `<div class="li thought ${done ? "done" : ""}">
       <button class="circle-tick ${done ? "on" : ""}" data-action="dump-done" data-id="${t.id}" aria-label="Done">${done ? icon("check") : ""}</button>
-      <span class="grow"><span class="thought-text">${esc(t.text)}</span>
+      <span class="grow"><span class="thought-text" contenteditable="true" data-thought="${t.id}" enterkeyhint="done">${esc(t.text)}</span>
         <span class="small muted block">${isQuick(t.text) && !done ? `${icon("bolt")} Quick win · ` : ""}${done ? `Done ${niceDate(t.doneOn)}` : `Added ${niceDate(t.added)}`}</span>
         ${moves.length ? `<span class="row" style="gap:6px;margin-top:6px">${moves.map((m) => `<button class="chip" data-action="dump-move" data-id="${t.id}" data-to="${m}">${label[m]}</button>`).join("")}</span>` : ""}
       </span>
@@ -183,9 +181,10 @@ function dumpHomeHTML() {
         <p class="label" style="margin:0">This week's focus</p>
         <a class="small muted plain-link" href="#dump">${inbox.length ? `${inbox.length} to sort` : "Brain dump"} ›</a>
       </div>
-      ${week.length ? `<div class="list-card">${week.map((t) => `<div class="li tight">
+      ${week.length ? `<div class="list-card">${week.slice(0, FOCUS_LIMIT).map((t) => `<div class="li tight">
           <button class="circle-tick" data-action="dump-done" data-id="${t.id}" aria-label="Done"></button>
-          <span class="grow">${esc(t.text)}</span></div>`).join("")}</div>` : `<p class="small muted">Nothing picked yet.</p>`}
+          <span class="grow">${esc(t.text)}</span></div>`).join("")}</div>
+        ${week.length > FOCUS_LIMIT ? `<a class="small muted plain-link" href="#dump">+ ${week.length - FOCUS_LIMIT} more in This week</a>` : ""}` : `<p class="small muted">Nothing picked yet.</p>`}
       <div class="add-row" style="margin-top:8px"><input id="dump-quick" placeholder="Dump a thought"><button class="circ sm dark" data-action="dump-quick" aria-label="Add">${icon("plus")}</button></div>
     </div>`;
 }
@@ -249,4 +248,18 @@ Object.assign(ACTIONS, {
 
 document.addEventListener("keydown", (e) => {
   if (e.key === "Enter" && e.target.id === "dump-quick") { e.preventDefault(); ACTIONS["dump-quick"](); }
+});
+
+// Tap a thought to fix its wording. Saves when you tap away (or press Done).
+document.addEventListener("focusout", (e) => {
+  const id = e.target.dataset && e.target.dataset.thought;
+  if (!id) return;
+  const t = dump().find((x) => x.id === id);
+  const text = e.target.textContent.replace(/\s+/g, " ").trim();
+  if (!t || text === t.text) return;
+  if (text) t.text = text; else e.target.textContent = t.text;
+  saveData();
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && e.target.dataset && e.target.dataset.thought) { e.preventDefault(); e.target.blur(); }
 });

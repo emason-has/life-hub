@@ -1,15 +1,11 @@
 // =====================================================================
 // YOUR PLAN CONTENT
-// Everything in this file is the "content" of your plan: goals, Tiimo
-// reminders, meals, cleaning, session types and workout templates.
+// Everything in this file is the "content" of your plan: goals, meals,
+// cleaning, session types and workout templates.
 // Change the words here and the rest of the app updates itself.
 // =====================================================================
 
 const UPPER_BODY_NOTE = "Start light. Stop if arm nerve pain flares.";
-
-// ---------- Wake-up plan ----------
-// Starts at 6:45 and steps 15 min earlier each week until 6:15.
-const WAKE_TIMES = ["6:45", "6:30", "6:15"];
 
 // ---------- Strength goals by Bali ----------
 const GOALS = [
@@ -29,25 +25,12 @@ const CHEERS = [
 
 
 // =====================================================================
-// TIIMO REMINDERS (shown under More)
-// =====================================================================
-const TIIMO = [
-  { id: "t-wake", title: "Wake up", time: "{wake}", days: "Every day" },
-  { id: "t-leave", title: "Leave for work", time: "7:10am", days: "Mon to Fri" },
-  { id: "t-posture", title: "Before-lunch posture stretch", time: "11:45am", days: "Mon to Fri" },
-  { id: "t-gym", title: "Gym after work", time: "5:00pm", days: "Tue, Thu, Fri" },
-  { id: "t-prep", title: "Evening prep (bag, lunch, gym gear)", time: "9:30pm", days: "Sun to Thu" },
-  { id: "t-bed", title: "Bed", time: "10:15pm", days: "Every day" },
-  { id: "t-sunday", title: "Sunday reset: sort brain dump, plan meals, prep", time: "4:00pm", days: "Sunday" },
-  { id: "t-tidy", title: "Thursday tidy", time: "7:00pm", days: "Thursday" }
-];
-
-
-// =====================================================================
 // STAGE 3: MEALS
 // =====================================================================
 
 const STORES = ["Aldi", "Coles", "Woolworths"];   // first one is the default
+// Non-food shopping. Tap the shop on an item to move it along this list.
+const OTHER_STORES = ["Kmart", "Chemist", "Bunnings", "Online", "Anywhere"];
 
 const RECIPE_TAGS = ["High protein", "Quick", "Meal prep friendly", "Freezer friendly", "Slow cooker", "Thermomix"];
 
@@ -109,6 +92,8 @@ const STAPLES = [
 // "meal" is breakfast, snack or dinner. "serves" is how many portions one batch makes.
 // Ingredient lines start with an amount so the shopping list can add them up.
 const STARTER_RECIPES = [
+  { id: "r-upgo", name: "Up&Go protein", meal: "breakfast", serves: 1, protein: "", quick: true, tags: ["Quick"],
+    ingredients: ["1 Up&Go protein"], method: "Grab and go." },
   { id: "r-oats", name: "Protein overnight oats", meal: "breakfast", serves: 1, protein: 38,
     tags: ["High protein", "Quick", "Meal prep friendly"],
     ingredients: ["40g Oats", "120g Greek yoghurt", "1 scoop Protein powder", "60g Berries", "80ml Water"],
