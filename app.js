@@ -215,7 +215,13 @@ const SCREENS = {
 function render() {
   const [screen, ...rest] = (location.hash.slice(1) || "home").split("/");
   const draw = SCREENS[screen] || homeScreen;
-  document.getElementById("app").innerHTML = draw(...rest) + (quickOpen ? quickAddHTML() : "");
+  try {
+    document.getElementById("app").innerHTML = draw(...rest) + (quickOpen ? quickAddHTML() : "");
+  } catch (err) {
+    // Something broke while drawing: say what, instead of silently doing nothing.
+    showError(err);
+    return;
+  }
   // Screens that live under another tab (a workout is part of Train, etc.)
   const parentTab = { session: "fitness", tpl: "fitness", ex: "fitness", pickex: "fitness", train: "fitness", wlog: "fitness",
     recipe: "meals", pick: "meals", settings: "more", health: "more", house: "more", dump: "more" };
@@ -663,6 +669,16 @@ function addFromFile(incoming) {
   toast(recipes.length || workouts.length ? `Added ${recipes.length} recipes and ${workouts.length} workouts` : "You already have everything in that file");
   render();
 }
+
+// If anything goes wrong, show the details so a screenshot says exactly what broke.
+function showError(err) {
+  console.error(err);
+  const box = document.getElementById("app-error") || document.body.appendChild(Object.assign(document.createElement("div"), { id: "app-error" }));
+  box.innerHTML = `<strong>Something went wrong.</strong> Screenshot this for Claude:<br><code>${esc(String(err && err.stack || err).split("\n").slice(0, 3).join(" | "))}</code>
+    <button class="sm" onclick="this.parentNode.remove()">Close</button>`;
+}
+window.addEventListener("error", (e) => showError(e.error || e.message));
+window.addEventListener("unhandledrejection", (e) => showError(e.reason));
 
 // ---------- 9. Start the app ----------
 // Waits until every file (fitness.js, meals.js ...) has loaded, then draws the screen.

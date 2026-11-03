@@ -333,7 +333,8 @@ const MUSCLE_GROUPS = [
   { id: "shoulders", label: "Shoulders", word: "Shoulder", color: "#6cc4a1" },
   { id: "chest", label: "Chest", word: "Chest", color: "#d98fa8" },
   { id: "arms", label: "Biceps & forearms", word: "Arm", color: "#8fb3d9" },
-  { id: "mobility", label: "Mobility", word: "Mobility", color: "#b9a68c" }
+  { id: "mobility", label: "Mobility", word: "Mobility", color: "#b9a68c" },
+  { id: "cardio", label: "Cardio", word: "Cardio", color: "#5bb6d6" }
 ];
 
 // When a session drops, which exercise to add extra sets of, by muscle.

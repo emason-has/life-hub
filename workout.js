@@ -69,23 +69,35 @@ function startWorkout(sid) {
   if (!found) return;
   const f = fit();
   if (f.active && f.active.sid !== sid && !confirm("You have a workout in progress. Start this one instead?")) { location.hash = "#train"; return; }
+  const s = found.s;
   if (!f.active || f.active.sid !== sid) {
-    const s = found.s;
     const id = uid("w");
     f.active = {
       id, date: found.key, sid, tpl: s.tpl, name: sessionTitle(s) || typeInfo(s.type).label,
       start: found.key === todayKey() ? Date.now() : null, exIndex: 0, rest: null, notes: "",
       exercises: sessionExercises(s).map((t) => prefill(t, found.key, id))
     };
-    saveData();
+  } else if (f.active.tpl !== s.tpl) {
+    // You switched this session to a different workout after starting it (say glutes to back).
+    // Keep anything you've already ticked, and bring in the new workout's exercises.
+    const a = f.active;
+    const kept = a.exercises.filter((e) => e.sets.some((x) => x.done));
+    const fresh = sessionExercises(s).filter((t) => !kept.some((e) => e.ex === t.ex)).map((t) => prefill(t, a.date, a.id));
+    a.exercises = [...kept, ...fresh];
+    a.tpl = s.tpl;
+    a.name = sessionTitle(s) || typeInfo(s.type).label;
+    a.exIndex = kept.length < a.exercises.length ? kept.length : 0;
+    toast(kept.length ? `Switched. Kept your ${kept.length} done exercise${kept.length === 1 ? "" : "s"}.` : "Switched workout");
   }
+  saveData();
   location.hash = "#train";
 }
 
 function addToWorkout(ex) {
   const a = fit().active;
   if (!a) return;
-  a.exercises.push(prefill({ ex, sets: 3, reps: exById(ex).repsLabel === "sec" ? 30 : 12, rest: 60 }, a.date, a.id));
+  const label = exById(ex).repsLabel;
+  a.exercises.push(prefill(label === "min" ? { ex, sets: 1, reps: 20, rest: 0 } : { ex, sets: 3, reps: label === "sec" ? 30 : 12, rest: 60 }, a.date, a.id));
   a.exIndex = a.exercises.length - 1;
   saveData();
   location.hash = "#train";
@@ -360,8 +372,8 @@ function workoutLogScreen(id) {
           ${e.note ? `<p class="small muted"> ${esc(e.note)}</p>` : ""}
         </div>`;
     }).join("")}
+    <a class="btn ghost full" href="#pickex/wlog/${id}">+ Add an exercise you did</a>
     <label class="field">Workout notes<textarea data-wlog="${id}" data-field="notes" rows="2">${esc(wk.notes || "")}</textarea></label>
-
   `;
 }
 

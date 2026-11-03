@@ -169,6 +169,7 @@ function addSets(total, ex, n) {
   const e = exById(ex);
   if (!e || !n) return;
   const g = e.groups[0];
+  if (g === "cardio") return;      // cardio is minutes, not sets toward a muscle
   total[g] = (total[g] || 0) + n;
 }
 
@@ -311,6 +312,19 @@ function copyDays(monday) {
 const MAKE_UP_ORDER = ["glutes", "back", "triceps", "core", "legs"];
 const MAKE_UP_HOME = { glutes: "t-light", legs: "t-light", back: "t-home-upper", triceps: "t-home-upper", core: "t-pilates" };
 
+// A "make up" suggestion goes away by itself once that muscle's sets are back
+// (say you added core to your workout afterwards).
+function currentPending(monday) {
+  const p = fit().pending;
+  if (!p || p.monday !== monday) return null;
+  if (p.g && (weekSets(p.monday, true).projected[p.g] || 0) >= p.need) {
+    fit().pending = null;
+    saveData();
+    return null;
+  }
+  return p;
+}
+
 function checkDrop(monday, before, fromKey) {
   const after = weekSets(monday, true).projected;
   const loss = (m) => (before[m] || 0) - (after[m] || 0);
@@ -330,7 +344,7 @@ function checkDrop(monday, before, fromKey) {
       const where = typeInfo(s.type).strength ? "gym" : "home";
       const ex = (sessionExercises(s).find((e) => (exById(e.ex) || { groups: [] }).groups[0] === g) || {}).ex || MAKE_UP_EXERCISES[g][where];
       const n = Math.min(3, Math.max(2, lost));
-      fit().pending = { monday, kind: "extra", sid: s.id, ex, n,
+      fit().pending = { monday, kind: "extra", sid: s.id, ex, n, g, need: before[g],
         text: `${label} work dropped on ${dayLong(fromKey)}. Add ${n} extra ${label.toLowerCase()} sets to ${dayLong(key)}'s ${typeInfo(s.type).label.toLowerCase()}?` };
       return;
     }
@@ -339,7 +353,7 @@ function checkDrop(monday, before, fromKey) {
   const free = later.find((k) => !sessionsOn(k).some((s) => s.status !== "skipped"));
   if (free) {
     const tpl = tplById(MAKE_UP_HOME[g]);
-    if (tpl) fit().pending = { monday, kind: "add", key: free, tpl: tpl.id, type: tpl.type,
+    if (tpl) fit().pending = { monday, kind: "add", key: free, tpl: tpl.id, type: tpl.type, g, need: before[g],
       text: `${label} work dropped on ${dayLong(fromKey)}. Add "${tpl.name}" on ${dayLong(free)}?` };
   }
 }
@@ -384,7 +398,7 @@ function fitnessPlanScreen(mondayArg) {
   if (!planDay || !keys.includes(planDay)) planDay = keys.includes(today) ? today : monday;
   const w = fit().weeks[monday];
   const score = weekScore(monday);
-  const pending = fit().pending && fit().pending.monday === monday ? fit().pending : null;
+  const pending = currentPending(monday);
   const lastWeek = fit().weeks[addDays(monday, -7)];
   const list = sessionsOn(planDay);
   const thisWeek = monday === mondayOf(today);
@@ -582,6 +596,7 @@ function templateScreen(id) {
     ${t.link ? `<a class="btn full" href="${esc(t.link)}" target="_blank" rel="noopener">${icon("arrow")} Watch the saved post</a>` : ""}
     ${t.note ? `<p class="small muted">${esc(t.note)}</p>` : ""}
     ${exSearchHTML(`tpl:${t.id}`, "Search to add an exercise", true)}
+    <a class="link-btn" href="#pickex/tpl/${t.id}" style="margin:-4px 0 12px">${icon("plus")} Browse all exercises, including cardio</a>
 
     <div class="card list-card">
     ${t.exercises.map((e, i) => {
@@ -610,11 +625,15 @@ function templateScreen(id) {
 // ----- Exercise library -----
 let libFilter = { muscle: "all", equip: "all", where: "all", favs: false };
 let libQuery = "";
+// The "add an exercise" picker keeps its own filters, so a filter left on in
+// the Exercises tab never hides things when you're adding to a workout.
+let pickFilter = { muscle: "all", equip: "all", where: "all", favs: false };
 const EQUIP_LABELS = { machine: "Machine", cable: "Cable", barbell: "Barbell", dumbbells: "Dumbbells", kettlebell: "Kettlebell",
   "mini band": "Mini band", "long band": "Long band", bodyweight: "Bodyweight", other: "Other" };
 
-function filteredExercises(query = libQuery) {
+function filteredExercises(query = libQuery, filter = libFilter) {
   const f = fit();
+  const libFilter = filter;
   const words = query.toLowerCase().split(/\s+/).filter(Boolean);
   return EXERCISES.filter((e) =>
     (libFilter.muscle === "all" || e.groups.includes(libFilter.muscle)) &&
@@ -628,7 +647,7 @@ function filteredExercises(query = libQuery) {
 
 function exThumb(e, cls = "thumb") {
   return e.images && e.images[0] ? `<img class="${cls}" src="${e.images[0]}" alt="" loading="lazy">`
-    : `<span class="${cls} thumb-ph">${icon({ mobility: "lotus", core: "posture", back: "posture" }[e.groups[0]] || "dumbbell")}</span>`;
+    : `<span class="${cls} thumb-ph">${icon({ mobility: "lotus", core: "posture", back: "posture", cardio: "run" }[e.groups[0]] || "dumbbell")}</span>`;
 }
 
 function exerciseRowHTML(e, action) {
@@ -649,21 +668,22 @@ function exSearchHTML(where, placeholder, inline) {
 }
 
 function exResultsHTML(where, query) {
-  const list = filteredExercises(query).filter((e) => where === "lib" || !fit().avoid.includes(e.id));
-  const limit = where === "lib" ? 60 : 8;
+  const list = filteredExercises(query, where === "lib" ? libFilter : pickFilter).filter((e) => where === "lib" || !fit().avoid.includes(e.id));
+  const limit = where === "lib" ? 60 : 40;
   const [mode, id] = where.split(":");
-  const action = mode === "tpl" ? `data-action="pick-ex" data-mode="tpl" data-id="${id}"` : mode === "train" ? `data-action="pick-ex" data-mode="train" data-id="x"` : "";
+  const action = mode === "tpl" || mode === "wlog" ? `data-action="pick-ex" data-mode="${mode}" data-id="${id}"` : mode === "train" ? `data-action="pick-ex" data-mode="train" data-id="x"` : "";
   return list.slice(0, limit).map((e) => exerciseRowHTML(e, action)).join("") +
     (list.length > limit ? `<p class="small muted" style="padding:10px 14px;margin:0">${list.length - limit} more. Keep typing to narrow it down.</p>` : "") +
     (!list.length ? `<p class="muted" style="padding:12px 14px;margin:0">No matches.</p>` : "");
 }
 
-function filterChipsHTML() {
-  const chip = (key, val, label) => `<button class="chip ${libFilter[key] === val ? "on" : ""}" data-action="lib-filter" data-key="${key}" data-val="${val}">${label}</button>`;
+function filterChipsHTML(target = "lib") {
+  const filter = target === "pick" ? pickFilter : libFilter;
+  const chip = (key, val, label) => `<button class="chip ${filter[key] === val ? "on" : ""}" data-action="lib-filter" data-target="${target}" data-key="${key}" data-val="${val}">${label}</button>`;
   return `
-    <div class="chips">${chip("muscle", "all", "All")}${MUSCLE_GROUPS.map((m) => chip("muscle", m.id, m.label)).join("")}</div>
+    <div class="chips">${chip("muscle", "all", "All")}${chip("muscle", "cardio", "Cardio")}${MUSCLE_GROUPS.filter((m) => m.id !== "cardio").map((m) => chip("muscle", m.id, m.label)).join("")}</div>
     <div class="chips">${chip("where", "all", "Anywhere")}${chip("where", "gym", "Gym")}${chip("where", "home", "Home")}
-      <button class="chip ${libFilter.favs ? "on" : ""}" data-action="lib-filter" data-key="favs" data-val="${!libFilter.favs}">Favourites</button>
+      <button class="chip ${filter.favs ? "on" : ""}" data-action="lib-filter" data-target="${target}" data-key="favs" data-val="${!filter.favs}">Favourites</button>
       ${chip("equip", "all", "Any equipment")}${Object.entries(EQUIP_LABELS).map(([k, l]) => chip("equip", k, l)).join("")}</div>`;
 }
 
@@ -678,12 +698,14 @@ function libraryScreen() {
 
 // Picking an exercise to add to the workout in progress.
 function pickExerciseScreen(mode, id) {
+  const where = mode === "tpl" || mode === "wlog" ? `${mode}:${id}` : "train";
+  const back = { tpl: `#tpl/${id}`, wlog: `#wlog/${id}` }[mode] || "#train";
   return `
-    ${topBar(backBtn(mode === "tpl" ? `#tpl/${id}` : "#train"))}
+    ${topBar(backBtn(back))}
     ${headline("Add an", "exercise")}
-    ${exSearchHTML(mode === "tpl" ? `tpl:${id}` : "train", "Search exercises")}
-    ${filterChipsHTML()}
-    <div class="card list-card" data-results="${mode === "tpl" ? `tpl:${id}` : "train"}">${exResultsHTML(mode === "tpl" ? `tpl:${id}` : "train", "")}</div>
+    ${exSearchHTML(where, "Search exercises")}
+    ${filterChipsHTML("pick")}
+    <div class="card list-card" data-results="${where}">${exResultsHTML(where, "")}</div>
   `;
 }
 
@@ -1006,17 +1028,28 @@ Object.assign(ACTIONS, {
     render();
   },
 
-  "lib-filter"({ key, val }) {
-    libFilter[key] = key === "favs" ? val === "true" : val;
+  "lib-filter"({ key, val, target }) {
+    (target === "pick" ? pickFilter : libFilter)[key] = key === "favs" ? val === "true" : val;
     render();
   },
 
   "pick-ex"({ mode, id, ex }) {
     if (mode === "tpl") {
-      tplById(id).exercises.push({ ex, sets: 3, reps: exById(ex).repsLabel === "sec" ? 30 : 12, rest: 60 });
+      const label = exById(ex).repsLabel;
+      tplById(id).exercises.push(label === "min" ? { ex, sets: 1, reps: 20, rest: 0 } : { ex, sets: 3, reps: label === "sec" ? 30 : 12, rest: 60 });
       saveData();
       toast(`Added ${exById(ex).name}`);
       if (location.hash === `#tpl/${id}`) render(); else location.hash = `#tpl/${id}`;
+    } else if (mode === "wlog") {
+      // Adding something you did but forgot to log: sets come in ticked, change the numbers if needed.
+      const wk = workoutById(id);
+      const label = exById(ex).repsLabel;
+      const n = label === "min" ? 1 : 3, r = label === "min" ? 20 : label === "sec" ? 30 : 12;
+      wk.exercises.push({ ex, target: { sets: n, reps: r, rest: 60 }, rating: null, note: "",
+        sets: Array.from({ length: n }, () => ({ w: "", r, done: true, pb: false })) });
+      saveData();
+      toast(`Added ${exById(ex).name}`);
+      location.hash = `#wlog/${id}`;
     } else addToWorkout(ex);
   },
 
@@ -1070,5 +1103,5 @@ document.addEventListener("input", (e) => {
   const box = document.querySelector(`[data-results="${where}"]`);
   if (!box) return;
   box.innerHTML = exResultsHTML(where, q);
-  if (where.startsWith("tpl:")) box.hidden = !q.trim();
+  if (box.classList.contains("ex-results")) box.hidden = !q.trim();
 });
