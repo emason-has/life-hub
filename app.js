@@ -224,7 +224,7 @@ function render() {
   }
   // Screens that live under another tab (a workout is part of Train, etc.)
   const parentTab = { session: "fitness", tpl: "fitness", ex: "fitness", pickex: "fitness", train: "fitness", wlog: "fitness",
-    recipe: "meals", pick: "meals", settings: "more", health: "more", house: "more", dump: "more" };
+    recipe: "meals", pick: "meals", settings: "more", health: "more", house: "more", dump: "more", physio: "more" };
   const tab = parentTab[screen] || (SCREENS[screen] ? screen : "home");
   document.querySelectorAll(".tabbar a").forEach((a) => a.classList.toggle("on", a.dataset.tab === tab));
   // Keep the chosen chip in view when a chip row is wider than the screen.
@@ -371,6 +371,7 @@ function moreScreen() {
     ${headline("Everything", "else")}
     <div class="card list-card">
       ${row("#dump", "note", "Brain dump", dumpBy("inbox").length ? `${dumpBy("inbox").length} to sort` : "")}
+      ${row("#physio", "heart", "Physio", "Back, neck and arm")}
       ${row("#house", "sponge", "House", due ? `${due} due` : "All good")}
       ${row("#fitness/progress/body", "chart", "Body & measurements")}
       ${row("#health", "heart", "Apple Health")}

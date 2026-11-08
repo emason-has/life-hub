@@ -450,3 +450,12 @@ body::before {
 #app-error { position: fixed; left: 12px; right: 12px; top: calc(env(safe-area-inset-top) + 8px); z-index: 60; padding: 12px 14px; border-radius: 16px;
   background: #fff3ef; color: #7a2e1d; border: 1px solid #f3c2b4; font-size: 13px; line-height: 1.4; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15); }
 #app-error code { display: block; margin: 6px 0 8px; font-size: 11px; word-break: break-word; }
+
+/* Physio */
+.pain-scale { display: grid; grid-template-columns: repeat(11, 1fr); gap: 4px; }
+.pain-scale button { min-height: 40px; padding: 0; border-radius: 10px; font-size: 15px; font-weight: 600; background: var(--mint-soft); border-color: transparent; }
+.pain-scale button.mid { background: var(--amber-soft); }
+.pain-scale button.hi { background: var(--late-soft); }
+.pain-scale button.on { background: var(--ink); color: var(--on-ink); }
+.i.tile.warn-tile { background: var(--late-soft); color: var(--late); }
+.red-flags summary strong { color: var(--late); }
