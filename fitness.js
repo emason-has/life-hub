@@ -514,7 +514,7 @@ function sessionScreen(id, keyArg) {
   if (!found) return `${topBar(backBtn("#fitness/plan"))}<p>Session not found.</p>`;
   const { s, key, monday } = found;
   const today = todayKey();
-  const tpls = fit().templates.slice().sort((a, b) => (b.type === s.type) - (a.type === s.type));
+  const tpls = fit().templates.filter((t) => !t.hidden || t.id === s.tpl).sort((a, b) => (b.type === s.type) - (a.type === s.type));
   const exList = sessionExercises(s);
   const wk = s.workoutId && workoutById(s.workoutId);
   const changed = s.planned && (s.planned.type !== s.type || s.planned.day !== found.day);
@@ -571,7 +571,7 @@ function newSessionScreen(key) {
 function templatesScreen() {
   return `
     <button class="full dark" data-action="tpl-new">${icon("plus")} New workout</button>
-    ${fit().templates.map((t) => {
+    ${fit().templates.filter((t) => !t.hidden).map((t) => {
       const img = sessionImage({ tpl: t.id });
       const sets = t.exercises.reduce((n, e) => n + Number(e.sets || 0), 0);
       return `<a class="wcard" href="#tpl/${t.id}">

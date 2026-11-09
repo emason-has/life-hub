@@ -459,3 +459,8 @@ body::before {
 .pain-scale button.on { background: var(--ink); color: var(--on-ink); }
 .i.tile.warn-tile { background: var(--late-soft); color: var(--late); }
 .red-flags summary strong { color: var(--late); }
+
+/* Trainer */
+.coach-list .grow { flex: 1; min-width: 0; }
+.coach-list .chip { min-height: 32px; padding: 0 12px; font-size: 13px; }
+.coach-pre { white-space: pre-wrap; font-size: 11px; line-height: 1.4; background: var(--card-solid); border-radius: 12px; padding: 10px; margin: 8px 0 0; max-height: 300px; overflow: auto; }
