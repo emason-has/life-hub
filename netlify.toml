@@ -1,0 +1,10 @@
+# Tells Netlify how to publish Life Hub: no build step, just serve these files.
+[build]
+  publish = "."
+  command = ""
+
+# Always check for a fresh copy of the app shell, so updates show up quickly.
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache"
