@@ -20,6 +20,7 @@ no login, no paid services.
 | `dump.js` | Brain dump (under More, optional Home widget): get thoughts out fast, sort them on Sunday, keep a done log. |
 | `surf.js` | Surf suggestions for Trigg, Scarborough and Mullaloo from the free Open-Meteo forecast (Train > Week, optional Home widget). |
 | `physio.js` | Physio (under More): pick where you are sore for a gentle routine, tips, gym changes and when to get checked. Logs pain so you can see if it is improving. General guidance, not a diagnosis. |
+| `reminders.js` | Reminders through your iPhone Calendar: daily check-in, Sunday reset, measurements, backup, and each week's workouts with a heads-up. |
 | `coach.js` | Trainer: suggests changes for today or tomorrow from your sleep, steps, soreness, workouts and meals (free, offline), and "Ask my trainer" sends your last 2 weeks to your Claude app. |
 | `meals.js` | Everything for the Food tab: recipes, planner, Surprise me, shopping list. |
 | `manifest.json` | Tells the iPhone this is an app (name, icon, colours). |

@@ -55,6 +55,23 @@ function coachTips() {
   const tips = [];
   const h = recentHealth();
 
+  // Nothing planned this week yet.
+  const wk = fit().weeks[mondayOf(day)];
+  if (!wk || !wk.planned) tips.push({ level: "warn", text: "This week isn't planned yet, so I can't help with your sessions. It takes a minute.", action: { label: "Plan my week", href: "#fitness" } });
+
+  // No Health numbers lately: sleep and steps tips need them.
+  const lastHealth = Object.keys(data.health).sort().pop();
+  if (!lastHealth || daysBetween(lastHealth, todayKey()) >= 2) {
+    tips.push({ level: "tip", text: lastHealth ? `No sleep or steps since ${niceDate(lastHealth)}. Paste from Health so I can tailor your days.` : "Paste from Health so I can use your sleep and steps.",
+      action: { label: "Paste from Health", act: "health-paste" } });
+  }
+
+  // Reminders aren't set up yet.
+  if (!data.settings.remindersAdded) tips.push({ level: "tip", text: "No reminders set up yet. Add them to your Calendar so your phone nudges you.", action: { label: "Set up reminders", href: "#coach" } });
+  else if (wk && wk.planned && data.settings.weekInCalendar !== mondayOf(todayKey()) && [0, 1].includes(fromKey(todayKey()).getDay())) {
+    tips.push({ level: "tip", text: "Add this week's workouts to your Calendar for a heads-up before each one.", action: { label: "Add to Calendar", act: "cal-week" } });
+  }
+
   // Sleep: short sleep means keep it lighter.
   if (h && h.sleep && h.sleep < 6 && lift && when === "today") {
     tips.push({ level: "warn", text: `Only ${h.sleep}h sleep. Keep today's ${typeInfo(lift.type).label.toLowerCase()} but skip personal bests, or make it the short version.`,
@@ -193,6 +210,8 @@ function coachScreen() {
       ${coachTipsHTML()}
     </div>
     <p class="hint">Based on your sleep and steps (from the Health Shortcut), soreness (Physio), workouts, meals and week plan. Nothing leaves your phone.</p>
+
+    ${remindersHTML()}
 
     <div class="card">
       <p class="label" style="margin-top:0">Ask my trainer</p>

@@ -481,6 +481,8 @@ function settingsScreen() {
       <p class="small muted" style="margin:10px 0 0">Export, then "Save to Files" (iCloud Drive is a good spot). To restore, tap Import and pick that file.</p>
     </div>
 
+    ${typeof remindersHTML === "function" ? remindersHTML() : ""}
+
     <div class="card">
       <p class="label" style="margin-top:0">Dates</p>
       <label class="field">Bali trip date<input type="date" data-setting="baliDate" value="${s.baliDate}"></label>

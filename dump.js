@@ -133,6 +133,7 @@ function reviewScreen() {
     ${headline("All", "sorted")}
     <div class="card"><p>Nice. Your week's focus:</p>
       ${week.length ? `<ul>${week.map((t) => `<li>${esc(t.text)}</li>`).join("")}</ul>` : `<p class="muted">Nothing picked for this week. That's fine too.</p>`}
+      <button class="full" data-action="cal-week">${icon("calendar")} Add this week's workouts to Calendar</button>
       ${week.some((t) => !t.sent) ? `<button class="full dark" data-action="dump-send">${icon("bell")} Send to Reminders</button>
         <a class="btn full" href="#home">Done</a>` : `<a class="btn full dark" href="#home">Done</a>`}</div>`;
   const t = inbox[0];
